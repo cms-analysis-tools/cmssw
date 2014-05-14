@@ -46,6 +46,21 @@ addJetCollection(
    )
 process.out.outputCommands.append( 'drop *_selectedPatJetsAK5PF_caloTowers_*' )
 
+# uncomment the following lines to add ca8PFJetsPruned to your PAT output
+addJetCollection(
+   process,
+   labelName = 'CA8PFCHSPruned',
+   jetSource = cms.InputTag('ca8PFJetsCHSPruned'),
+   algo = 'CA8',
+   rParam = 0.8,
+   genJetCollection = cms.InputTag('ak8GenJets'),
+   jetCorrections = ('AK5PFchs', cms.vstring(['L1FastJet', 'L2Relative', 'L3Absolute']), 'None'), # FIXME: Use proper JECs, as soon as available
+   btagDiscriminators = [
+       'combinedSecondaryVertexBJetTags'
+     ],
+   )
+process.out.outputCommands.append( 'drop *_selectedPatJetsCA8PFCHSPruned_caloTowers_*' )
+
 # uncomment the following lines to switch to ak5CaloJets in your PAT output
 switchJetCollection(
    process,
