@@ -350,7 +350,7 @@ void PATPhotonProducer::produce(edm::Event & iEvent, const edm::EventSetup & iSe
     std::vector<float> vCov = EcalClusterTools::localCovariances( *photonRef->superCluster()->seed(), &*rechitsH, ecalTopology_ );
     const float see = (isnan(vCov[0]) ? 0. : sqrt(vCov[0]));
     const float spp = (isnan(vCov[2]) ? 0. : sqrt(vCov[2]));
-    const float sep = vCon[1];
+    const float sep = vCov[1];
 
     // set input variables for regression energy correction
     aPhoton.setEMax( eMax );
