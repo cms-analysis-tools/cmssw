@@ -71,8 +71,10 @@ process.muonTriggerMatchHLTMuons = cms.EDProducer(
 ##from PhysicsTools.PatAlgos.tools.coreTools import removeCleaning
 ##removeCleaning( process ) ## this function is not available anymore in 70X (TJ)
 # to save a bit of disk space
-#process.out.outputCommands += [ ' *_muonTriggerMatchHLTMuons_*_*'
-#                              ]
+process.out.outputCommands += [ 'drop *_*_*_*'
+                               ,'keep *_patTrigger*_*_*'
+                               ,'keep *_selectedPatMuons*_*_*'
+                              ]
 process.out.fileName = 'edmPatTrigger.root'
 ## --
 ## Switch on PAT trigger
