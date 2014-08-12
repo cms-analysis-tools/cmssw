@@ -87,7 +87,8 @@ IsolatedTracksCone::IsolatedTracksCone(const edm::ParameterSet& iConfig) {
 
   edm::ParameterSet parameters = 
     iConfig.getParameter<edm::ParameterSet>("TrackAssociatorParameters");
-  parameters_.loadParameters( parameters );
+  edm::ConsumesCollector iC = consumesCollector();
+  parameters_.loadParameters( parameters, iC );
   trackAssociator_ =  new TrackDetectorAssociator();
   trackAssociator_->useDefaultPropagator();
 
@@ -392,9 +393,9 @@ void IsolatedTracksCone::analyze(const edm::Event& iEvent,
     ////////////////////////////
 
     const reco::HitPattern& hitp = pTrack->hitPattern();
-    int nLayersCrossed = hitp.trackerLayersWithMeasurement();        
-    int nOuterHits     = hitp.stripTOBLayersWithMeasurement()
-      +hitp.stripTECLayersWithMeasurement() ;
+    int nLayersCrossed = hitp.trackerLayersWithMeasurement();
+    int nOuterHits     = hitp.stripTOBLayersWithMeasurement() + 
+        hitp.stripTECLayersWithMeasurement();
 
     
     double simP = 0;
@@ -1429,14 +1430,12 @@ void IsolatedTracksCone::printTrack(const reco::Track* pTrack) {
 	    << " TrackQuality " << pTrack->qualityName(trackQuality_) << " " << pTrack->quality(trackQuality_) 
 	    << std::endl;
   
-  if( printTrkHitPattern_ ) {
-    const reco::HitPattern& p = pTrack->hitPattern();
-    
-    for (int i=0; i<p.numberOfHits(); i++) {
-      p.printHitPattern(i, std::cout);
+  if(printTrkHitPattern_) {
+    const reco::HitPattern &p = pTrack->hitPattern();
+    for (int i = 0; i < p.numberOfHits(reco::HitPattern::TRACK_HITS); i++) {
+        p.printHitPattern(reco::HitPattern::TRACK_HITS, i, std::cout);
     }
   }
-
 }
 
 double IsolatedTracksCone::DeltaPhi(double v1, double v2) {
@@ -1462,18 +1461,4 @@ double IsolatedTracksCone::DeltaR(double eta1, double phi1,
 
 //define this as a plug-in
 DEFINE_FWK_MODULE(IsolatedTracksCone);
-	  
-	  
-	  
-	  
-	  
 
-	  
-	  
-
-
-
-
-
-
-  

@@ -41,9 +41,6 @@ the worker is reset().
 #include "FWCore/Utilities/interface/ProductHolderIndex.h"
 #include "FWCore/Utilities/interface/StreamID.h"
 
-#include "boost/shared_ptr.hpp"
-
-#include "FWCore/Framework/src/RunStopwatch.h"
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 
 #include <memory>
@@ -75,7 +72,6 @@ namespace edm {
 
     template <typename T>
     bool doWork(typename T::MyPrincipal&, EventSetup const& c,
-                CPUTimer *const timer,
                 StreamID stream,
                 ParentContext const& parentContext,
                 typename T::Context const* context);
@@ -98,7 +94,7 @@ namespace edm {
     ModuleDescription const* descPtr() const {return moduleCallingContext_.moduleDescription(); }
     ///The signals are required to live longer than the last call to 'doWork'
     /// this was done to improve performance based on profiling
-    void setActivityRegistry(boost::shared_ptr<ActivityRegistry> areg);
+    void setActivityRegistry(std::shared_ptr<ActivityRegistry> areg);
     
     void setEarlyDeleteHelper(EarlyDeleteHelper* iHelper);
     
@@ -106,19 +102,14 @@ namespace edm {
     virtual void updateLookup(BranchType iBranchType,
                       ProductHolderIndexHelper const&) = 0;
 
+    virtual void modulesDependentUpon(std::vector<const char*>& oModuleLabels) const = 0;
     
     virtual Types moduleType() const =0;
-
-    std::pair<double, double> timeCpuReal() const {
-      return std::pair<double, double>(stopwatch_->cpuTime(), stopwatch_->realTime());
-    }
 
     void clearCounters() {
       timesRun_ = timesVisited_ = timesPassed_ = timesFailed_ = timesExcept_ = 0;
     }
     
-    void useStopwatch();
-
     int timesRun() const { return timesRun_; }
     int timesVisited() const { return timesVisited_; }
     int timesPassed() const { return timesPassed_; }
@@ -155,6 +146,8 @@ namespace edm {
     virtual void implEndStream(StreamID) = 0;
     
     void resetModuleDescription(ModuleDescription const*);
+    
+    ActivityRegistry* activityRegistry() { return actReg_.get(); }
 
   private:
 
@@ -169,8 +162,6 @@ namespace edm {
     virtual void implPreForkReleaseResources() = 0;
     virtual void implPostForkReacquireResources(unsigned int iChildIndex,
                                                unsigned int iNumberOfChildren) = 0;
-    RunStopwatch::StopwatchPointer stopwatch_;
-
     int timesRun_;
     int timesVisited_;
     int timesPassed_;
@@ -181,9 +172,9 @@ namespace edm {
     ModuleCallingContext moduleCallingContext_;
 
     ExceptionToActionTable const* actions_; // memory assumed to be managed elsewhere
-    boost::shared_ptr<cms::Exception> cached_exception_; // if state is 'exception'
+    std::shared_ptr<cms::Exception> cached_exception_; // if state is 'exception'
 
-    boost::shared_ptr<ActivityRegistry> actReg_;
+    std::shared_ptr<ActivityRegistry> actReg_;
     
     EarlyDeleteHelper* earlyDeleteHelper_;
   };
@@ -193,23 +184,21 @@ namespace edm {
     class ModuleSignalSentry {
     public:
       ModuleSignalSentry(ActivityRegistry *a,
-                         ModuleDescription const& md,
                          typename T::Context const* context,
-                         ModuleCallingContext* moduleCallingContext) :
-        a_(a), md_(&md), context_(context), moduleCallingContext_(moduleCallingContext) {
+                         ModuleCallingContext const* moduleCallingContext) :
+        a_(a), context_(context), moduleCallingContext_(moduleCallingContext) {
 
-	if(a_) T::preModuleSignal(a_, md_, context, moduleCallingContext_);
+	if(a_) T::preModuleSignal(a_, context, moduleCallingContext_);
       }
 
       ~ModuleSignalSentry() {
-	if(a_) T::postModuleSignal(a_, md_, context_, moduleCallingContext_);
+	if(a_) T::postModuleSignal(a_, context_, moduleCallingContext_);
       }
 
     private:
       ActivityRegistry* a_;
-      ModuleDescription const* md_;
       typename T::Context const* context_;
-      ModuleCallingContext* moduleCallingContext_;
+      ModuleCallingContext const* moduleCallingContext_;
     };
 
     template <typename T>
@@ -273,8 +262,13 @@ namespace edm {
     template<>
     class CallImpl<OccurrenceTraits<EventPrincipal, BranchActionStreamBegin>> {
     public:
-      static bool call(Worker* iWorker, StreamID, EventPrincipal& ep, EventSetup const& es,
-                       ModuleCallingContext const* mcc) {
+      typedef OccurrenceTraits<EventPrincipal, BranchActionStreamBegin> Arg;
+      static bool call(Worker* iWorker, StreamID,
+                       EventPrincipal& ep, EventSetup const& es,
+                       ActivityRegistry* actReg,
+                       ModuleCallingContext const* mcc,
+                       Arg::Context const* context) {
+        //Signal sentry is handled by the module
         return iWorker->implDo(ep,es, mcc);
       }
     };
@@ -282,32 +276,52 @@ namespace edm {
     template<>
     class CallImpl<OccurrenceTraits<RunPrincipal, BranchActionGlobalBegin>>{
     public:
-      static bool call(Worker* iWorker,StreamID, RunPrincipal& ep, EventSetup const& es,
-                       ModuleCallingContext const* mcc) {
+      typedef OccurrenceTraits<RunPrincipal, BranchActionGlobalBegin> Arg;
+      static bool call(Worker* iWorker,StreamID,
+                       RunPrincipal& ep, EventSetup const& es,
+                       ActivityRegistry* actReg,
+                       ModuleCallingContext const* mcc,
+                       Arg::Context const* context) {
+        ModuleSignalSentry<Arg> cpp(actReg, context, mcc);
         return iWorker->implDoBegin(ep,es, mcc);
       }
     };
     template<>
     class CallImpl<OccurrenceTraits<RunPrincipal, BranchActionStreamBegin>>{
     public:
-      static bool call(Worker* iWorker,StreamID id, RunPrincipal& ep, EventSetup const& es,
-                       ModuleCallingContext const* mcc) {
+      typedef OccurrenceTraits<RunPrincipal, BranchActionStreamBegin> Arg;
+      static bool call(Worker* iWorker,StreamID id,
+                       RunPrincipal& ep, EventSetup const& es,
+                       ActivityRegistry* actReg,
+                       ModuleCallingContext const* mcc,
+                       Arg::Context const* context) {
+        ModuleSignalSentry<Arg> cpp(actReg, context, mcc);
         return iWorker->implDoStreamBegin(id,ep,es, mcc);
       }
     };
     template<>
     class CallImpl<OccurrenceTraits<RunPrincipal, BranchActionGlobalEnd>>{
     public:
-      static bool call(Worker* iWorker,StreamID, RunPrincipal& ep, EventSetup const& es,
-                       ModuleCallingContext const* mcc) {
+      typedef OccurrenceTraits<RunPrincipal, BranchActionGlobalEnd> Arg;
+      static bool call(Worker* iWorker,StreamID,
+                       RunPrincipal& ep, EventSetup const& es,
+                       ActivityRegistry* actReg,
+                       ModuleCallingContext const* mcc,
+                       Arg::Context const* context) {
+        ModuleSignalSentry<Arg> cpp(actReg, context, mcc);
         return iWorker->implDoEnd(ep,es, mcc);
       }
     };
     template<>
     class CallImpl<OccurrenceTraits<RunPrincipal, BranchActionStreamEnd>>{
     public:
-      static bool call(Worker* iWorker,StreamID id, RunPrincipal& ep, EventSetup const& es,
-                       ModuleCallingContext const* mcc) {
+      typedef OccurrenceTraits<RunPrincipal, BranchActionStreamEnd> Arg;
+      static bool call(Worker* iWorker,StreamID id,
+                       RunPrincipal& ep, EventSetup const& es,
+                       ActivityRegistry* actReg,
+                       ModuleCallingContext const* mcc,
+                       Arg::Context const* context) {
+        ModuleSignalSentry<Arg> cpp(actReg, context, mcc);
         return iWorker->implDoStreamEnd(id,ep,es, mcc);
       }
     };
@@ -315,16 +329,26 @@ namespace edm {
     template<>
     class CallImpl<OccurrenceTraits<LuminosityBlockPrincipal, BranchActionGlobalBegin>>{
     public:
-      static bool call(Worker* iWorker,StreamID, LuminosityBlockPrincipal& ep, EventSetup const& es,
-                       ModuleCallingContext const* mcc) {
+      typedef OccurrenceTraits<LuminosityBlockPrincipal, BranchActionGlobalBegin> Arg;
+      static bool call(Worker* iWorker,StreamID,
+                       LuminosityBlockPrincipal& ep, EventSetup const& es,
+                       ActivityRegistry* actReg,
+                       ModuleCallingContext const* mcc,
+                       Arg::Context const* context) {
+        ModuleSignalSentry<Arg> cpp(actReg, context, mcc);
         return iWorker->implDoBegin(ep,es, mcc);
       }
     };
     template<>
     class CallImpl<OccurrenceTraits<LuminosityBlockPrincipal, BranchActionStreamBegin>>{
     public:
-      static bool call(Worker* iWorker,StreamID id, LuminosityBlockPrincipal& ep, EventSetup const& es,
-                       ModuleCallingContext const* mcc) {
+      typedef OccurrenceTraits<LuminosityBlockPrincipal, BranchActionStreamBegin> Arg;
+      static bool call(Worker* iWorker,StreamID id,
+                       LuminosityBlockPrincipal& ep, EventSetup const& es,
+                       ActivityRegistry* actReg,
+                       ModuleCallingContext const* mcc,
+                       Arg::Context const* context) {
+        ModuleSignalSentry<Arg> cpp(actReg, context, mcc);
         return iWorker->implDoStreamBegin(id,ep,es, mcc);
       }
     };
@@ -332,16 +356,26 @@ namespace edm {
     template<>
     class CallImpl<OccurrenceTraits<LuminosityBlockPrincipal, BranchActionGlobalEnd>>{
     public:
-      static bool call(Worker* iWorker,StreamID, LuminosityBlockPrincipal& ep, EventSetup const& es,
-                       ModuleCallingContext const* mcc) {
+      typedef OccurrenceTraits<LuminosityBlockPrincipal, BranchActionGlobalEnd> Arg;
+      static bool call(Worker* iWorker,StreamID,
+                       LuminosityBlockPrincipal& ep, EventSetup const& es,
+                       ActivityRegistry* actReg,
+                       ModuleCallingContext const* mcc,
+                       Arg::Context const* context) {
+        ModuleSignalSentry<Arg> cpp(actReg, context, mcc);
         return iWorker->implDoEnd(ep,es, mcc);
       }
     };
     template<>
     class CallImpl<OccurrenceTraits<LuminosityBlockPrincipal, BranchActionStreamEnd>>{
     public:
-      static bool call(Worker* iWorker,StreamID id, LuminosityBlockPrincipal& ep, EventSetup const& es,
-                       ModuleCallingContext const* mcc) {
+      typedef OccurrenceTraits<LuminosityBlockPrincipal, BranchActionStreamEnd> Arg;
+      static bool call(Worker* iWorker,StreamID id,
+                       LuminosityBlockPrincipal& ep, EventSetup const& es,
+                       ActivityRegistry* actReg,
+                       ModuleCallingContext const* mcc,
+                       Arg::Context const* context) {
+        ModuleSignalSentry<Arg> cpp(actReg, context, mcc);
         return iWorker->implDoStreamEnd(id,ep,es, mcc);
       }
     };
@@ -350,14 +384,9 @@ namespace edm {
   template <typename T>
   bool Worker::doWork(typename T::MyPrincipal& ep, 
                       EventSetup const& es,
-                      CPUTimer* const iTimer,
                       StreamID streamID,
                       ParentContext const& parentContext,
                       typename T::Context const* context) {
-
-    // A RunStopwatch, but only if we are processing an event.
-    RunDualStopwatches stopwatch(T::isEvent_ ? stopwatch_ : RunStopwatch::StopwatchPointer(),
-                                 iTimer);
 
     if (T::isEvent_) {
       ++timesVisited_;
@@ -376,7 +405,7 @@ namespace edm {
     ModuleContextSentry moduleContextSentry(&moduleCallingContext_, parentContext);
 
     try {
-      try {
+      convertException::wrap([&]() {
 
         if (T::isEvent_) {
           ++timesRun_;
@@ -393,8 +422,7 @@ namespace edm {
         }
 
         moduleCallingContext_.setState(ModuleCallingContext::State::kRunning);
-        ModuleSignalSentry<T> cpp(actReg_.get(), description(), context, &moduleCallingContext_);
-        rc = workerhelper::CallImpl<T>::call(this,streamID,ep,es, &moduleCallingContext_);
+        rc = workerhelper::CallImpl<T>::call(this,streamID,ep,es, actReg_.get(), &moduleCallingContext_, context);
 
         if (rc) {
           state_ = Pass;
@@ -403,13 +431,7 @@ namespace edm {
           state_ = Fail;
           if (T::isEvent_) ++timesFailed_;
         }
-      }
-      catch (cms::Exception& e) { throw; }
-      catch(std::bad_alloc& bda) { convertException::badAllocToEDM(); }
-      catch (std::exception& e) { convertException::stdToEDM(e); }
-      catch(std::string& s) { convertException::stringToEDM(s); }
-      catch(char const* c) { convertException::charPtrToEDM(c); }
-      catch (...) { convertException::unknownToEDM(); }
+      });
     }
     catch(cms::Exception& ex) {
 

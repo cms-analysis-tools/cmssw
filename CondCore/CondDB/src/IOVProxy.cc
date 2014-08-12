@@ -18,6 +18,7 @@ namespace cond {
       std::string tag;
       cond::TimeType timeType;
       std::string payloadType;
+      cond::SynchronizationType synchronizationType = cond::OFFLINE;
       cond::Time_t endOfValidity;
       cond::Time_t lastValidatedTime;
       // iov data
@@ -126,7 +127,7 @@ namespace cond {
       
       checkTransaction( "IOVProxy::load" );
       std::string dummy;
-      if(!m_session->iovSchema().tagTable().select( tag, m_data->timeType, m_data->payloadType, 
+      if(!m_session->iovSchema().tagTable().select( tag, m_data->timeType, m_data->payloadType, m_data->synchronizationType,
 						    m_data->endOfValidity, dummy, m_data->lastValidatedTime ) ){
 	throwException( "Tag \""+tag+"\" has not been found in the database.","IOVProxy::load");
       }
@@ -170,12 +171,26 @@ namespace cond {
       return m_data.get() ? m_data->payloadType : std::string("");
     }
     
+    cond::SynchronizationType IOVProxy::synchronizationType() const {
+      return m_data.get() ? m_data->synchronizationType : cond::SYNCHRONIZATION_UNKNOWN;
+    }
+
     cond::Time_t IOVProxy::endOfValidity() const {
       return m_data.get() ? m_data->endOfValidity : cond::time::MIN_VAL;
     }
     
     cond::Time_t IOVProxy::lastValidatedTime() const {
       return m_data.get() ? m_data->lastValidatedTime : cond::time::MIN_VAL;
+    }
+
+    std::tuple<std::string, boost::posix_time::ptime, boost::posix_time::ptime > IOVProxy::getMetadata() const {
+      if(!m_data.get()) throwException( "No tag has been loaded.","IOVProxy::getMetadata()");
+      checkTransaction( "IOVProxy::getMetadata" );
+      std::tuple<std::string, boost::posix_time::ptime, boost::posix_time::ptime > ret;
+      if(!m_session->iovSchema().tagTable().getMetadata( m_data->tag, std::get<0>( ret ), std::get<1>( ret ), std::get<2>( ret ) ) ){
+	throwException( "Metadata for tag \""+m_data->tag+"\" have not been found in the database.","IOVProxy::getMetadata()");
+      }
+      return ret;
     }
 
     bool IOVProxy::isEmpty() const {

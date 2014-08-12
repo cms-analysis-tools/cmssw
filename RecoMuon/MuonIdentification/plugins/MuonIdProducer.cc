@@ -32,7 +32,6 @@
 #include "DataFormats/RecoCandidate/interface/IsoDepositFwd.h"
 
 #include "TrackingTools/TrackAssociator/interface/TrackDetectorAssociator.h"
-#include "Utilities/Timing/interface/TimerStack.h"
 
 #include <boost/regex.hpp>
 #include "RecoMuon/MuonIdentification/plugins/MuonIdProducer.h"
@@ -89,7 +88,8 @@ muIsoExtractorCalo_(0),muIsoExtractorTrack_(0),muIsoExtractorJet_(0)
 
    // Load TrackDetectorAssociator parameters
    edm::ParameterSet parameters = iConfig.getParameter<edm::ParameterSet>("TrackAssociatorParameters");
-   parameters_.loadParameters( parameters );
+   edm::ConsumesCollector iC = consumesCollector();
+   parameters_.loadParameters( parameters, iC );
 
    // Load parameters for the TimingFiller
    edm::ParameterSet timingParameters = iConfig.getParameter<edm::ParameterSet>("TimingFillerParameters");
@@ -211,9 +211,6 @@ MuonIdProducer::~MuonIdProducer()
 
 void MuonIdProducer::init(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-   // TimerStack timers;
-   // timers.push("MuonIdProducer::produce::init");
-
    innerTrackCollectionHandle_.clear();
    outerTrackCollectionHandle_.clear();
    linkCollectionHandle_.clear();
@@ -224,14 +221,12 @@ void MuonIdProducer::init(edm::Event& iEvent, const edm::EventSetup& iSetup)
    dytCollectionHandle_.clear();
 
 
-   // timers.push("MuonIdProducer::produce::init::getPropagator");
    edm::ESHandle<Propagator> propagator;
    iSetup.get<TrackingComponentsRecord>().get("SteppingHelixPropagatorAny", propagator);
    trackAssociator_.setPropagator(propagator.product());
 
    if (fillTrackerKink_) trackerKinkFinder_->init(iSetup);
 
-   // timers.pop_and_push("MuonIdProducer::produce::init::getInputCollections");
    for ( unsigned int i = 0; i < inputCollectionLabels_.size(); ++i ) {
       if ( inputCollectionTypes_[i] == "inner tracks" ) {
 	 iEvent.getByToken(innerTrackCollectionToken_, innerTrackCollectionHandle_);
@@ -476,8 +471,6 @@ bool validateGlobalMuonPair( const reco::MuonTrackLinks& goodMuon,
 
 void MuonIdProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 {
-   // TimerStack timers;
-   // timers.push("MuonIdProducer::produce");
 
    std::auto_ptr<reco::MuonCollection> outputMuons(new reco::MuonCollection);
    std::auto_ptr<reco::CaloMuonCollection> caloMuons( new reco::CaloMuonCollection );
@@ -593,11 +586,9 @@ void MuonIdProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
 		 direction != directions.end(); ++direction )
 	     {
 		// make muon
-		// timers.push("MuonIdProducer::produce::fillMuonId");
 	       reco::Muon trackerMuon( makeMuon(iEvent, iSetup, reco::TrackRef( innerTrackCollectionHandle_, i ), reco::Muon::InnerTrack ) );
 		trackerMuon.setType( reco::Muon::TrackerMuon | reco::Muon::RPCMuon );
 		fillMuonId(iEvent, iSetup, trackerMuon, *direction);
-		// timers.pop();
 
 		if ( debugWithTruthMatching_ ) {
 		   // add MC hits to a list of matched segments.
@@ -702,7 +693,6 @@ void MuonIdProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
    for ( reco::MuonCollection::iterator muon = outputMuons->begin(); muon != outputMuons->end(); ++muon )
      {
 	// Fill muonID
-	// timers.push("MuonIdProducer::produce::fillMuonId");
 	if ( ( fillMatching_ && ! muon->isMatchesValid() ) ||
 	     ( fillEnergy_ && !muon->isEnergyValid() ) )
 	  {
@@ -729,14 +719,10 @@ void MuonIdProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
             fillTrackerKink(*muon);
         }
 
-	// timers.push("MuonIdProducer::produce::fillCaloCompatibility");
 	if ( fillCaloCompatibility_ ) muon->setCaloCompatibility( muonCaloCompatibility_.evaluate(*muon) );
-	// timers.pop();
 
-	// timers.push("MuonIdProducer::produce::fillIsolation");
 	if ( fillIsolation_ ) fillMuonIsolation(iEvent, iSetup, *muon,
 						trackDepColl[i], ecalDepColl[i], hcalDepColl[i], hoDepColl[i], jetDepColl[i]);
-	// timers.pop();
 
         // fill timing information
         reco::MuonTime muonTime;
@@ -762,9 +748,7 @@ void MuonIdProducer::produce(edm::Event& iEvent, const edm::EventSetup& iSetup)
      }
 
    LogTrace("MuonIdentification") << "number of muons produced: " << outputMuons->size();
-   // timers.push("MuonIdProducer::produce::fillArbitration");
    if ( fillMatching_ ) fillArbitrationInfo( outputMuons.get() );
-   // timers.pop();
    edm::OrphanHandle<reco::MuonCollection> muonHandle = iEvent.put(outputMuons);
 
    filler.insert(muonHandle, combinedTimeColl.begin(), combinedTimeColl.end());

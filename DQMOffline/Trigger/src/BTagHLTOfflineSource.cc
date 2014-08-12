@@ -62,7 +62,7 @@ BTagHLTOfflineSource::BTagHLTOfflineSource(const edm::ParameterSet& iConfig):
   plotEff_      = iConfig.getUntrackedParameter< bool >("plotEff", false);
   nameForEff_   = iConfig.getUntrackedParameter< bool >("nameForEff", true);
 
-  jetID = new reco::helper::JetIDHelper(iConfig.getParameter<ParameterSet>("JetIDParams"));
+  jetID = new reco::helper::JetIDHelper(iConfig.getParameter<ParameterSet>("JetIDParams"), consumesCollector());
   
   // plotting paramters
   MuonTrigPaths_ = iConfig.getUntrackedParameter<vector<std::string> >("pathnameMuon");
@@ -1340,7 +1340,7 @@ bool BTagHLTOfflineSource::isVBTFMuon(const reco::Muon& muon)
   int nMatches            = muon.numberOfMatches();
   int trackerHits         = tk->hitPattern().numberOfValidHits();
   int pixelHits           = tk->hitPattern().numberOfValidPixelHits();
-  int outerHits           = tk->trackerExpectedHitsOuter().numberOfHits();
+  int outerHits           = tk->hitPattern().numberOfHits(reco::HitPattern::MISSING_OUTER_HITS);
   double tknormalizedChi2 = tk->normalizedChi2(); 
   double gmnormalizedChi2 = gm->normalizedChi2(); 
 

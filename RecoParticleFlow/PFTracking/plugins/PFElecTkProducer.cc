@@ -15,11 +15,9 @@
 #include "RecoParticleFlow/PFTracking/interface/PFElecTkProducer.h"
 #include "RecoParticleFlow/PFTracking/interface/PFTrackTransformer.h"
 #include "RecoParticleFlow/PFTracking/interface/ConvBremPFTrackFinder.h"
-#include "DataFormats/GsfTrackReco/interface/GsfTrackFwd.h"
 #include "MagneticField/Engine/interface/MagneticField.h"
 #include "MagneticField/Records/interface/IdealMagneticFieldRecord.h"
 #include "FWCore/Framework/interface/ESHandle.h"
-#include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "TrackingTools/PatternTools/interface/Trajectory.h"
 #include "DataFormats/TrajectorySeed/interface/TrajectorySeed.h"
 #include "DataFormats/EgammaCandidates/interface/GsfElectronFwd.h"
@@ -32,14 +30,6 @@
 #include "TrackingTools/TransientTrack/interface/TransientTrackBuilder.h"
 #include "TrackingTools/Records/interface/TransientTrackRecord.h"
 #include "DataFormats/VertexReco/interface/Vertex.h"
-#include "DataFormats/VertexReco/interface/VertexFwd.h"
-#include "DataFormats/ParticleFlowReco/interface/PFDisplacedTrackerVertex.h"
-#include "DataFormats/ParticleFlowReco/interface/PFDisplacedVertexFwd.h"
-#include "DataFormats/ParticleFlowReco/interface/PFDisplacedVertex.h"
-#include "DataFormats/ParticleFlowReco/interface/PFConversionFwd.h"
-#include "DataFormats/ParticleFlowReco/interface/PFConversion.h"
-#include "DataFormats/ParticleFlowReco/interface/PFV0Fwd.h"
-#include "DataFormats/ParticleFlowReco/interface/PFV0.h"
 #include "RecoParticleFlow/PFClusterTools/interface/LinkByRecHit.h"
 #include "RecoParticleFlow/PFClusterTools/interface/ClusterClusterMapping.h"
 
@@ -52,28 +42,28 @@ PFElecTkProducer::PFElecTkProducer(const ParameterSet& iConfig):
   pfTransformer_(0),
   convBremFinder_(0)
 {
-  LogInfo("PFElecTkProducer")<<"PFElecTkProducer started";
-
-  gsfTrackLabel_ = iConfig.getParameter<InputTag>
-    ("GsfTrackModuleLabel");
-
-  pfTrackLabel_ = iConfig.getParameter<InputTag>
-    ("PFRecTrackLabel");
-
-  primVtxLabel_ = iConfig.getParameter<InputTag>
-    ("PrimaryVertexLabel");
-
-  pfEcalClusters_ = iConfig.getParameter<InputTag>
-    ("PFEcalClusters");
-
-  pfNuclear_ = iConfig.getParameter<InputTag>
-    ("PFNuclear");
   
-  pfConv_ = iConfig.getParameter<InputTag>
-    ("PFConversions");
+
+  gsfTrackLabel_ = consumes<reco::GsfTrackCollection>(iConfig.getParameter<InputTag>
+						      ("GsfTrackModuleLabel"));
+
+  pfTrackLabel_ = consumes<reco::PFRecTrackCollection>(iConfig.getParameter<InputTag>
+						       ("PFRecTrackLabel"));
+
+  primVtxLabel_ = consumes<reco::VertexCollection>(iConfig.getParameter<InputTag>
+						   ("PrimaryVertexLabel"));
+
+  pfEcalClusters_ = consumes<reco::PFClusterCollection>(iConfig.getParameter<InputTag>
+							("PFEcalClusters"));
+
+  pfNuclear_ = consumes<reco::PFDisplacedTrackerVertexCollection>(iConfig.getParameter<InputTag>
+								  ("PFNuclear"));
   
-  pfV0_ = iConfig.getParameter<InputTag>
-    ("PFV0");
+  pfConv_ = consumes<reco::PFConversionCollection>(iConfig.getParameter<InputTag>
+						   ("PFConversions"));
+  
+  pfV0_ = consumes<reco::PFV0Collection>(iConfig.getParameter<InputTag>
+					 ("PFV0"));
 
   useNuclear_ = iConfig.getParameter<bool>("useNuclear");
   useConversions_ = iConfig.getParameter<bool>("useConversions");
@@ -136,8 +126,7 @@ PFElecTkProducer::~PFElecTkProducer()
 void
 PFElecTkProducer::produce(Event& iEvent, const EventSetup& iSetup)
 {
-  LogDebug("PFElecTkProducer")<<"START event: "<<iEvent.id().event()
-			      <<" in run "<<iEvent.id().run();
+
 
   //create the empty collections 
   auto_ptr< GsfPFRecTrackCollection > 
@@ -149,71 +138,51 @@ PFElecTkProducer::produce(Event& iEvent, const EventSetup& iSetup)
 
   //read collections of tracks
   Handle<GsfTrackCollection> gsftrackscoll;
-  iEvent.getByLabel(gsfTrackLabel_,gsftrackscoll);
+  iEvent.getByToken(gsfTrackLabel_,gsftrackscoll);
 
   //read collections of trajectories
   Handle<vector<Trajectory> > TrajectoryCollection;
  
   //read pfrectrack collection
   Handle<PFRecTrackCollection> thePfRecTrackCollection;
-  iEvent.getByLabel(pfTrackLabel_,thePfRecTrackCollection);
+  iEvent.getByToken(pfTrackLabel_,thePfRecTrackCollection);
   const PFRecTrackCollection& PfRTkColl = *(thePfRecTrackCollection.product());
 
   // PFClusters
   Handle<PFClusterCollection> theECPfClustCollection;
-  iEvent.getByLabel(pfEcalClusters_,theECPfClustCollection);
+  iEvent.getByToken(pfEcalClusters_,theECPfClustCollection);
   const PFClusterCollection& theEcalClusters = *(theECPfClustCollection.product());
 
   //Primary Vertexes
   Handle<reco::VertexCollection> thePrimaryVertexColl;
-  iEvent.getByLabel(primVtxLabel_,thePrimaryVertexColl);
+  iEvent.getByToken(primVtxLabel_,thePrimaryVertexColl);
 
 
 
   // Displaced Vertex
   Handle< reco::PFDisplacedTrackerVertexCollection > pfNuclears; 
-  if( useNuclear_ ) {
-    bool found = iEvent.getByLabel(pfNuclear_, pfNuclears);
+  if( useNuclear_ ) 
+    iEvent.getByToken(pfNuclear_, pfNuclears);
     
     
-    if(!found )
-      LogError("PFElecTkProducer")<<" cannot get PFNuclear : "
-				  <<  pfNuclear_
-				  << " please set useNuclear=False in RecoParticleFlow/PFTracking/python/pfTrackElec_cfi.py" << endl;
-  }
 
   // Conversions 
   Handle< reco::PFConversionCollection > pfConversions;
-  if( useConversions_ ) {
-    bool found = iEvent.getByLabel(pfConv_,pfConversions);
-    if(!found )
-      LogError("PFElecTkProducer")<<" cannot get PFConversions : "
-				  << pfConv_ 
-				  << " please set useConversions=False in RecoParticleFlow/PFTracking/python/pfTrackElec_cfi.py" << endl;
-  }
+  if( useConversions_ ) 
+    iEvent.getByToken(pfConv_,pfConversions);
 
   // V0
   Handle< reco::PFV0Collection > pfV0;
-  if( useV0_ ) {
-    bool found = iEvent.getByLabel(pfV0_, pfV0);
+  if( useV0_ ) 
+    iEvent.getByToken(pfV0_, pfV0);
     
-    if(!found )
-      LogError("PFElecTkProducer")<<" cannot get PFV0 : "
-				  << pfV0_
-				  << " please set useV0=False  RecoParticleFlow/PFTracking/python/pfTrackElec_cfi.py" << endl;
-  }
-  
+      
   
 
   GsfTrackCollection gsftracks = *(gsftrackscoll.product());	
   vector<Trajectory> tjvec(0);
   if (trajinev_){
-    bool foundTraj = iEvent.getByLabel(gsfTrackLabel_,TrajectoryCollection); 
-    if(!foundTraj) 
-      LogError("PFElecTkProducer")
-	<<" cannot get Trajectories of : "
-	<<  gsfTrackLabel_
-	<< " please set TrajInEvents = False in RecoParticleFlow/PFTracking/python/pfTrackElec_cfi.py" << endl;
+    iEvent.getByToken(gsfTrackLabel_,TrajectoryCollection); 
     
     tjvec= *(TrajectoryCollection.product());
   }
@@ -310,7 +279,7 @@ PFElecTkProducer::produce(Event& iEvent, const EventSetup& iSetup)
       selGsfPFRecTracks.push_back(pftrack_);
   }
   
-
+  
   unsigned int count_primary = 0;
   if(selGsfPFRecTracks.size() > 0) {
     for(unsigned int ipfgsf=0; ipfgsf<selGsfPFRecTracks.size();ipfgsf++) {
@@ -414,7 +383,7 @@ PFElecTkProducer::produce(Event& iEvent, const EventSetup& iSetup)
   GsfPFMap.clear();
   primaryGsfPFRecTracks.clear();
 }
-
+  
 // create the secondary GsfPFRecTracks Ref
 void
 PFElecTkProducer::createGsfPFRecTrackRef(const edm::OrphanHandle<reco::GsfPFRecTrackCollection>& gsfPfHandle,
@@ -531,6 +500,9 @@ bool PFElecTkProducer::isFifthStep(reco::PFRecTrackRef pfKfTrack) {
   case TrackBase::iter0:
   case TrackBase::iter1:
   case TrackBase::iter2:
+  case TrackBase::iter7:
+  case TrackBase::iter9:
+  case TrackBase::iter10:
     Algo = 0;
     break;
   case TrackBase::iter3:
@@ -811,8 +783,8 @@ PFElecTkProducer::resolveGsfTracks(const vector<reco::GsfPFRecTrack>  & GsfPFVec
 		   << " minBremDphi " <<  minBremDphi 
 		   << " nETot " << nETot 
 		   << " iETot " << iETot 
-		   << " nLostHits " <<  nGsfTrack->trackerExpectedHitsInner().numberOfLostHits() 
-		   << " iLostHits " << iGsfTrack->trackerExpectedHitsInner().numberOfLostHits() << endl;
+		   << " nLostHits " <<  nGsfTrack->hitPattern().numberOfLostHits(HitPattern::MISSING_INNER_HITS) 
+		   << " iLostHits " << iGsfTrack->hitPattern().numberOfLostHits(HitPattern::MISSING_INNER_HITS) << endl;
 	    
 	    // apply selection only if one track has lost hits
 	    if(applyAngularGsfClean_) {
@@ -835,8 +807,8 @@ PFElecTkProducer::resolveGsfTracks(const vector<reco::GsfPFRecTrack>  & GsfPFVec
 		   << " minBremDphi " <<  minBremDphi 
 		   << " nETot " << nETot 
 		   << " iETot " << iETot 
-		   << " nLostHits " <<  nGsfTrack->trackerExpectedHitsInner().numberOfLostHits() 
-		   << " iLostHits " << iGsfTrack->trackerExpectedHitsInner().numberOfLostHits() << endl;
+		   << " nLostHits " <<  nGsfTrack->hitPattern().numberOfLostHits(HitPattern::MISSING_INNER_HITS) 
+		   << " iLostHits " << iGsfTrack->hitPattern().numberOfLostHits(HitPattern::MISSING_INNER_HITS) << endl;
 	    
 	    if(nEcalDriven == false && nETot == 0.) {
 	      n_keepGsf = false;
@@ -1120,8 +1092,8 @@ bool PFElecTkProducer::isInnerMost(const reco::GsfTrackRef& nGsfTrack,
   // copied by the class RecoEgamma/EgammaElectronAlgos/src/EgAmbiguityTools.cc
   // obsolete but the code is kept: now using lost hits method
 
-  reco::HitPattern gsfHitPattern1 = nGsfTrack->hitPattern();
-  reco::HitPattern gsfHitPattern2 = iGsfTrack->hitPattern();
+  const reco::HitPattern &gsfHitPattern1 = nGsfTrack->hitPattern();
+  const reco::HitPattern &gsfHitPattern2 = iGsfTrack->hitPattern();
   
   // retrieve first valid hit
   int gsfHitCounter1 = 0 ;
@@ -1140,8 +1112,8 @@ bool PFElecTkProducer::isInnerMost(const reco::GsfTrackRef& nGsfTrack,
      elHitsIt2++, gsfHitCounter2++ )
     { if (((**elHitsIt2).isValid())) break ; }
   
-  uint32_t gsfHit1 = gsfHitPattern1.getHitPattern(gsfHitCounter1) ;
-  uint32_t gsfHit2 = gsfHitPattern2.getHitPattern(gsfHitCounter2) ;
+  uint32_t gsfHit1 = gsfHitPattern1.getHitPattern(HitPattern::TRACK_HITS, gsfHitCounter1) ;
+  uint32_t gsfHit2 = gsfHitPattern2.getHitPattern(HitPattern::TRACK_HITS, gsfHitCounter2) ;
   
   
   if (gsfHitPattern1.getSubStructure(gsfHit1)!=gsfHitPattern2.getSubStructure(gsfHit2))
@@ -1163,8 +1135,8 @@ bool PFElecTkProducer::isInnerMostWithLostHits(const reco::GsfTrackRef& nGsfTrac
 					       bool& sameLayer) {
   
   // define closest using the lost hits on the expectedhitsineer
-  unsigned int nLostHits = nGsfTrack->trackerExpectedHitsInner().numberOfLostHits();
-  unsigned int iLostHits = iGsfTrack->trackerExpectedHitsInner().numberOfLostHits();
+  unsigned int nLostHits = nGsfTrack->hitPattern().numberOfLostHits(HitPattern::MISSING_INNER_HITS);
+  unsigned int iLostHits = iGsfTrack->hitPattern().numberOfLostHits(HitPattern::MISSING_INNER_HITS);
   
   if (nLostHits!=iLostHits) {
     return (nLostHits > iLostHits);

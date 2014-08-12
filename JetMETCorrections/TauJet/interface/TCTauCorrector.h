@@ -18,11 +18,11 @@
 /// 16.4.2008/S.Lehti
 
 
-class TCTauCorrector :  public JetCorrector {
+class TCTauCorrector final :  public JetCorrector {
 
     public:
 	TCTauCorrector();
-        TCTauCorrector(const edm::ParameterSet& fParameters);
+        TCTauCorrector(const edm::ParameterSet& fParameters, edm::ConsumesCollector &&iC);
 	virtual ~TCTauCorrector();
 
 	math::XYZTLorentzVector correctedP4(const reco::CaloTau&) const;
@@ -33,19 +33,18 @@ class TCTauCorrector :  public JetCorrector {
 //        double correction(const reco::CaloJet&) const;
         double correction(const reco::CaloTau&) const;
 
-	void inputConfig(const edm::ParameterSet&) const;
-	void eventSetup(const edm::Event&, const edm::EventSetup&) const;
+	void inputConfig(const edm::ParameterSet&, edm::ConsumesCollector&);
+	void eventSetup(const edm::Event&, const edm::EventSetup&);
 
 	virtual bool eventRequired() const;
 
-	double efficiency();
-	int    allTauCandidates();
-	int    statistics();
-	int    algoComponent();
+	double efficiency() const ;
+	int    allTauCandidates() const ;
+	int    statistics() const ;
 
     private:
         void init();
 
-	TCTauAlgorithm* tcTauAlgorithm;
+	TCTauAlgorithm tcTauAlgorithm;
 };
 #endif

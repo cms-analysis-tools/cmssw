@@ -705,12 +705,12 @@ void ElectronMcSignalValidator::book()
   h2_ele_PhiMnPhiTrueVsEta = bookH2("PhiMnPhiTrueVsEta","ele momentum  phi - gen  phi vs eta",eta2D_nbin,eta_min,eta_max,dphi_nbin/2,dphi_min,dphi_max);
   h2_ele_PhiMnPhiTrueVsPhi = bookH2("PhiMnPhiTrueVsPhi","ele momentum  phi - gen  phi vs phi",phi2D_nbin,phi_min,phi_max,dphi_nbin/2,dphi_min,dphi_max);
   h2_ele_PhiMnPhiTrueVsPt = bookH2("PhiMnPhiTrueVsPt","ele momentum  phi - gen  phi vs pt",pt2D_nbin,0.,pt_max,dphi_nbin/2,dphi_min,dphi_max);
-  h1_ele_ecalEnergyError = bookH1withSumw2("ecalEnergyError","",error_nbin,0,enerror_max);
-  h1_ele_ecalEnergyError_barrel = bookH1withSumw2("ecalEnergyError_barrel","",30,0,30);
-  h1_ele_ecalEnergyError_endcaps = bookH1withSumw2("ecalEnergyError_endcaps","",error_nbin,0,enerror_max);
-  h1_ele_combinedP4Error = bookH1withSumw2("combinedP4Error","",error_nbin,0,enerror_max);
-  h1_ele_combinedP4Error_barrel = bookH1withSumw2("combinedP4Error_barrel","",30,0,30);
-  h1_ele_combinedP4Error_endcaps = bookH1withSumw2("combinedP4Error_endcaps","",error_nbin,0,enerror_max);
+  h1_ele_ecalEnergyError = bookH1withSumw2("ecalEnergyError","Regression estimate of the ECAL energy error",error_nbin,0,enerror_max);
+  h1_ele_ecalEnergyError_barrel = bookH1withSumw2("ecalEnergyError_barrel","Regression estimate of the ECAL energy error - barrel",30,0,30);
+  h1_ele_ecalEnergyError_endcaps = bookH1withSumw2("ecalEnergyError_endcaps","Regression estimate of the ECAL energy error - endcaps",error_nbin,0,enerror_max);
+  h1_ele_combinedP4Error = bookH1withSumw2("combinedP4Error","Estimated error on the combined momentum",error_nbin,0,enerror_max);
+  h1_ele_combinedP4Error_barrel = bookH1withSumw2("combinedP4Error_barrel","Estimated error on the combined momentum - barrel",30,0,30);
+  h1_ele_combinedP4Error_endcaps = bookH1withSumw2("combinedP4Error_endcaps","Estimated error on the combined momentum - endcaps",error_nbin,0,enerror_max);
 
   // matched electron, superclusters
   setBookPrefix("h_scl") ;
@@ -1044,6 +1044,16 @@ void ElectronMcSignalValidator::book()
   h1_ele_photonIso = bookH1withSumw2("photonIso","photonIso",100,0.0,20.,"photonIso","Events","ELE_LOGY E1 P");
   h1_ele_photonIso_barrel = bookH1withSumw2("photonIso_barrel","photonIso for barrel",100,0.0,20.,"photonIso_barrel","Events","ELE_LOGY E1 P");
   h1_ele_photonIso_endcaps = bookH1withSumw2("photonIso_endcaps","photonIso for endcaps",100,0.0,20.,"photonIso_endcaps","Events","ELE_LOGY E1 P");
+  // -- pflow over pT
+  h1_ele_chargedHadronRelativeIso = bookH1withSumw2("chargedHadronRelativeIso","chargedHadronRelativeIso",100,0.0,2.,"chargedHadronRelativeIso","Events","ELE_LOGY E1 P");
+  h1_ele_chargedHadronRelativeIso_barrel = bookH1withSumw2("chargedHadronRelativeIso_barrel","chargedHadronRelativeIso for barrel",100,0.0,2.,"chargedHadronRelativeIso_barrel","Events","ELE_LOGY E1 P");
+  h1_ele_chargedHadronRelativeIso_endcaps = bookH1withSumw2("chargedHadronRelativeIso_endcaps","chargedHadronRelativeIso for endcaps",100,0.0,2.,"chargedHadronRelativeIso_endcaps","Events","ELE_LOGY E1 P");
+  h1_ele_neutralHadronRelativeIso = bookH1withSumw2("neutralHadronRelativeIso","neutralHadronRelativeIso",100,0.0,2.,"neutralHadronRelativeIso","Events","ELE_LOGY E1 P");
+  h1_ele_neutralHadronRelativeIso_barrel = bookH1withSumw2("neutralHadronRelativeIso_barrel","neutralHadronRelativeIso for barrel",100,0.0,2.,"neutralHadronRelativeIso_barrel","Events","ELE_LOGY E1 P");
+  h1_ele_neutralHadronRelativeIso_endcaps = bookH1withSumw2("neutralHadronRelativeIso_endcaps","neutralHadronRelativeIso for endcaps",100,0.0,2.,"neutralHadronRelativeIso_endcaps","Events","ELE_LOGY E1 P");
+  h1_ele_photonRelativeIso = bookH1withSumw2("photonRelativeIso","photonRelativeIso",100,0.0,2.,"photonRelativeIso","Events","ELE_LOGY E1 P");
+  h1_ele_photonRelativeIso_barrel = bookH1withSumw2("photonRelativeIso_barrel","photonRelativeIso for barrel",100,0.0,2.,"photonRelativeIso_barrel","Events","ELE_LOGY E1 P");
+  h1_ele_photonRelativeIso_endcaps = bookH1withSumw2("photonRelativeIso_endcaps","photonRelativeIso for endcaps",100,0.0,2.,"photonRelativeIso_endcaps","Events","ELE_LOGY E1 P");
 
   // conversion rejection information
   h1_ele_convFlags = bookH1withSumw2("convFlags","conversion rejection flag",5,-1.5,3.5);
@@ -1727,10 +1737,10 @@ void ElectronMcSignalValidator::analyze( const edm::Event & iEvent, const edm::E
      }
 
     // provenance and pflow data
-    h1_ele_mva->Fill(bestGsfElectron.mva());
-    if (bestGsfElectron.isEB()) h1_ele_mva_barrel->Fill(bestGsfElectron.mva());
-    if (bestGsfElectron.isEE()) h1_ele_mva_endcaps->Fill(bestGsfElectron.mva());
-    if (bestGsfElectron.ecalDrivenSeed()) h1_ele_mva_eg->Fill(bestGsfElectron.mva());
+    h1_ele_mva->Fill(bestGsfElectron.mva_e_pi());
+    if (bestGsfElectron.isEB()) h1_ele_mva_barrel->Fill(bestGsfElectron.mva_e_pi());
+    if (bestGsfElectron.isEE()) h1_ele_mva_endcaps->Fill(bestGsfElectron.mva_e_pi());
+    if (bestGsfElectron.ecalDrivenSeed()) h1_ele_mva_eg->Fill(bestGsfElectron.mva_e_pi());
     if (bestGsfElectron.ecalDrivenSeed()) h1_ele_provenance->Fill(1.);
     if (bestGsfElectron.trackerDrivenSeed()) h1_ele_provenance->Fill(-1.);
     if (bestGsfElectron.trackerDrivenSeed()||bestGsfElectron.ecalDrivenSeed()) h1_ele_provenance->Fill(0.);
@@ -1764,6 +1774,19 @@ void ElectronMcSignalValidator::analyze( const edm::Event & iEvent, const edm::E
     h1_ele_photonIso->Fill(bestGsfElectron.pfIsolationVariables().sumPhotonEt);
     if (bestGsfElectron.isEB()) h1_ele_photonIso_barrel->Fill(bestGsfElectron.pfIsolationVariables().sumPhotonEt);
     if (bestGsfElectron.isEE()) h1_ele_photonIso_endcaps->Fill(bestGsfElectron.pfIsolationVariables().sumPhotonEt);
+
+	// -- pflow over pT
+	h1_ele_chargedHadronRelativeIso->Fill(bestGsfElectron.pfIsolationVariables().sumChargedHadronPt / bestGsfElectron.pt());
+	if (bestGsfElectron.isEB()) h1_ele_chargedHadronRelativeIso_barrel->Fill(bestGsfElectron.pfIsolationVariables().sumChargedHadronPt / bestGsfElectron.pt());
+	if (bestGsfElectron.isEE()) h1_ele_chargedHadronRelativeIso_endcaps->Fill(bestGsfElectron.pfIsolationVariables().sumChargedHadronPt / bestGsfElectron.pt());
+
+    h1_ele_neutralHadronRelativeIso->Fill(bestGsfElectron.pfIsolationVariables().sumNeutralHadronEt / bestGsfElectron.pt());
+    if (bestGsfElectron.isEB()) h1_ele_neutralHadronRelativeIso_barrel->Fill(bestGsfElectron.pfIsolationVariables().sumNeutralHadronEt / bestGsfElectron.pt());
+    if (bestGsfElectron.isEE()) h1_ele_neutralHadronRelativeIso_endcaps->Fill(bestGsfElectron.pfIsolationVariables().sumNeutralHadronEt / bestGsfElectron.pt());
+
+    h1_ele_photonRelativeIso->Fill(bestGsfElectron.pfIsolationVariables().sumPhotonEt / bestGsfElectron.pt());
+    if (bestGsfElectron.isEB()) h1_ele_photonRelativeIso_barrel->Fill(bestGsfElectron.pfIsolationVariables().sumPhotonEt / bestGsfElectron.pt());
+    if (bestGsfElectron.isEE()) h1_ele_photonRelativeIso_endcaps->Fill(bestGsfElectron.pfIsolationVariables().sumPhotonEt / bestGsfElectron.pt());
 
     // isolation
     h1_ele_tkSumPt_dr03->Fill(bestGsfElectron.dr03TkSumPt());

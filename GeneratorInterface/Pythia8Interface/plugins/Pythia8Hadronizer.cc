@@ -18,7 +18,8 @@
 // PS matchning prototype
 //
 #include "GeneratorInterface/Pythia8Interface/plugins/JetMatchingHook.h"
-
+#include "GeneratorInterface/PartonShowerVeto/interface/JetMatchingPy8Internal.h"
+#include "GeneratorInterface/PartonShowerVeto/interface/SetNumberOfPartonsDynamically.h"
 
 // Emission Veto Hooks
 //
@@ -63,6 +64,9 @@ class Pythia8Hadronizer : public BaseHadronizer, public Py8InterfaceBase {
 	
     bool generatePartonsAndHadronize() override;
     bool hadronize();
+
+    virtual bool residualDecay();
+
     void finalizeEvent() override;
 
     void statistics() override;
@@ -86,14 +90,18 @@ class Pythia8Hadronizer : public BaseHadronizer, public Py8InterfaceBase {
     double fBeam1PZ;
     double fBeam2PZ;
 
-    // Reweight user hook
+    // Reweight user hooks
     //
     UserHooks* fReweightUserHook;
+    UserHooks* fReweightRapUserHook;  
+    UserHooks* fReweightPtHatRapUserHook;
         
-    // PS matching protot6ype
+    // PS matching prototype
     //
     JetMatchingHook* fJetMatchingHook;
-	
+    JetMatchingMadgraph *fJetMatchingPy8InternalHook;
+    SetNumberOfPartonsDynamically *fSetNumberOfPartonsDynamicallyHook;
+    
     // Emission Veto Hooks
     //
     EmissionVetoHook* fEmissionVetoHook;
@@ -111,6 +119,10 @@ class Pythia8Hadronizer : public BaseHadronizer, public Py8InterfaceBase {
     static const std::vector<std::string> p8SharedResources;
     
     std::string slhafile_;
+
+    vector<float> DJR;
+    int nME;
+    int nMEFiltered;
 };
 
 const std::vector<std::string> Pythia8Hadronizer::p8SharedResources = { edm::SharedResourceNames::kPythia8 };
@@ -120,9 +132,9 @@ Pythia8Hadronizer::Pythia8Hadronizer(const edm::ParameterSet &params) :
   comEnergy(params.getParameter<double>("comEnergy")),
   LHEInputFileName(params.getUntrackedParameter<string>("LHEInputFileName","")),
   fInitialState(PP),
-  fReweightUserHook(0),
-  fJetMatchingHook(0),
-  fEmissionVetoHook(0),fEmissionVetoHook1(0)
+  fReweightUserHook(0),fReweightRapUserHook(0),fReweightPtHatRapUserHook(0),
+  fJetMatchingHook(0),fJetMatchingPy8InternalHook(0), fSetNumberOfPartonsDynamicallyHook(0),
+  fEmissionVetoHook(0),fEmissionVetoHook1(0), nME(-1), nMEFiltered(-1)
 {
 
   // J.Y.: the following 3 parameters are hacked "for a reason"
@@ -132,11 +144,9 @@ Pythia8Hadronizer::Pythia8Hadronizer(const edm::ParameterSet &params) :
     if ( fInitialState == PP )
     {
       fInitialState = PPbar;
-      edm::LogInfo("GeneratorInterface|Pythia6Interface")
-      << "Pythia6 will be initialized for PROTON-ANTIPROTON INITIAL STATE. "
-      << "This is a user-request change from the DEFAULT PROTON-PROTON initial state." << std::endl;
-      std::cout << "Pythia6 will be initialized for PROTON-ANTIPROTON INITIAL STATE." << std::endl;
-      std::cout << "This is a user-request change from the DEFAULT PROTON-PROTON initial state." << std::endl;
+      edm::LogImportant("GeneratorInterface|Pythia8Interface")
+      << "Pythia8 will be initialized for PROTON-ANTIPROTON INITIAL STATE. "
+      << "This is a user-request change from the DEFAULT PROTON-PROTON initial state.";
     }
     else
     {   
@@ -148,11 +158,9 @@ Pythia8Hadronizer::Pythia8Hadronizer(const edm::ParameterSet &params) :
     if ( fInitialState == PP )
     {
       fInitialState = ElectronPositron;
-      edm::LogInfo("GeneratorInterface|Pythia6Interface")
-      << "Pythia6 will be initialized for ELECTRON-POSITRON INITIAL STATE. "
-      << "This is a user-request change from the DEFAULT PROTON-PROTON initial state." << std::endl;
-      std::cout << "Pythia6 will be initialized for ELECTRON-POSITRON INITIAL STATE." << std::endl; 
-      std::cout << "This is a user-request change from the DEFAULT PROTON-PROTON initial state." << std::endl;
+      edm::LogInfo("GeneratorInterface|Pythia8Interface")
+      << "Pythia8 will be initialized for ELECTRON-POSITRON INITIAL STATE. "
+      << "This is a user-request change from the DEFAULT PROTON-PROTON initial state.";
     }
     else
     {   
@@ -185,6 +193,34 @@ Pythia8Hadronizer::Pythia8Hadronizer(const edm::ParameterSet &params) :
   //
   if( params.exists( "reweightGen" ) )
     fReweightUserHook = new PtHatReweightUserHook();
+  if( params.exists( "reweightGenRap" ) )
+  {
+    edm::LogInfo("Pythia8Interface") << "Start setup for reweightGenRap";
+    edm::ParameterSet rgrParams =
+      params.getParameter<edm::ParameterSet>("reweightGenRap");
+    fReweightRapUserHook =
+      new RapReweightUserHook(rgrParams.getParameter<std::string>("yLabSigmaFunc"),
+                              rgrParams.getParameter<double>("yLabPower"),
+                              rgrParams.getParameter<std::string>("yCMSigmaFunc"),
+                              rgrParams.getParameter<double>("yCMPower"),
+                              rgrParams.getParameter<double>("pTHatMin"),
+                              rgrParams.getParameter<double>("pTHatMax"));
+    edm::LogInfo("Pythia8Interface") << "End setup for reweightGenRap";
+  }
+  if( params.exists( "reweightGenPtHatRap" ) )
+  {
+    edm::LogInfo("Pythia8Interface") << "Start setup for reweightGenPtHatRap";
+    edm::ParameterSet rgrParams =
+      params.getParameter<edm::ParameterSet>("reweightGenPtHatRap");
+    fReweightPtHatRapUserHook =
+      new PtHatRapReweightUserHook(rgrParams.getParameter<std::string>("yLabSigmaFunc"),
+                                   rgrParams.getParameter<double>("yLabPower"),
+                                   rgrParams.getParameter<std::string>("yCMSigmaFunc"),
+                                   rgrParams.getParameter<double>("yCMPower"),
+                                   rgrParams.getParameter<double>("pTHatMin"),
+                                   rgrParams.getParameter<double>("pTHatMax"));
+    edm::LogInfo("Pythia8Interface") << "End setup for reweightGenPtHatRap";
+  }
 
   if( params.exists( "useUserHook" ) )
     throw edm::Exception(edm::errors::Configuration,"Pythia8Interface")
@@ -200,6 +236,12 @@ Pythia8Hadronizer::Pythia8Hadronizer(const edm::ParameterSet &params) :
       if ( scheme == "Madgraph" || scheme == "MadgraphFastJet" )
       {
          fJetMatchingHook = new JetMatchingHook( jmParams, &fMasterGen->info );
+      }
+      else if (scheme == "MadgraphPy8Internal") {
+        fJetMatchingPy8InternalHook = new ::JetMatchingMadgraph;
+      }
+      else if (scheme == "CKKWPy8Internal") {
+        fSetNumberOfPartonsDynamicallyHook = new SetNumberOfPartonsDynamically;
       }
   }
 
@@ -238,28 +280,26 @@ Pythia8Hadronizer::Pythia8Hadronizer(const edm::ParameterSet &params) :
 
   int NHooks=0;
   if(fReweightUserHook) NHooks++;
+  if(fReweightRapUserHook) NHooks++;
+  if(fReweightPtHatRapUserHook) NHooks++;
   if(fJetMatchingHook) NHooks++;
+  if(fJetMatchingPy8InternalHook) NHooks++;
+  if (fSetNumberOfPartonsDynamicallyHook) NHooks++;
   if(fEmissionVetoHook) NHooks++;
   if(fEmissionVetoHook1) NHooks++;
   if(NHooks > 1)
     throw edm::Exception(edm::errors::Configuration,"Pythia8Interface")
-      <<" Too many User Hooks. \n Please choose one from: reweightGen, jetMatching, emissionVeto \n";
-
+      <<" Too many User Hooks. \n Please choose one from: reweightGen, reweightGenRap, reweightGenPtHatRap, jetMatching, emissionVeto, emissionVeto1 \n";
   if(fReweightUserHook) fMasterGen->setUserHooksPtr(fReweightUserHook);
+  if(fReweightRapUserHook) fMasterGen->setUserHooksPtr(fReweightRapUserHook);
+  if(fReweightPtHatRapUserHook) fMasterGen->setUserHooksPtr(fReweightPtHatRapUserHook);
   if(fJetMatchingHook) fMasterGen->setUserHooksPtr(fJetMatchingHook);
+  if(fJetMatchingPy8InternalHook) fMasterGen->setUserHooksPtr(fJetMatchingPy8InternalHook);
+  if (fSetNumberOfPartonsDynamicallyHook) fMasterGen->setUserHooksPtr(fSetNumberOfPartonsDynamicallyHook);
   if(fEmissionVetoHook || fEmissionVetoHook1) {
-    cout << "Turning on Emission Veto Hook";
-    if(fEmissionVetoHook1) cout << " 1";
-    cout << endl;
-    int nversion = (int)(1000.*(fMasterGen->settings.parm("Pythia:versionNumber") - 8.));
-    if(nversion < 157) {
-      cout << "obsolete pythia8 version for this Emission Veto code" << endl;
-      cout << "Please update pythia8 version using the instructions here:" << endl;
-      cout << "https://twiki.cern.ch/twiki/bin/view/CMS/Pythia8Interface" << endl;
-      cout << "or try to use tag V00-01-28 of this interface" << endl;
-      throw edm::Exception(edm::errors::Configuration,"Pythia8Interface")
-        <<" Obsolete pythia8 version for this Emission Veto code\n";
-    }
+    std::cout << "Turning on Emission Veto Hook";
+    if(fEmissionVetoHook1) std::cout << " 1";
+    std::cout << std::endl;
     if(fEmissionVetoHook) fMasterGen->setUserHooksPtr(fEmissionVetoHook);
     if(fEmissionVetoHook1) fMasterGen->setUserHooksPtr(fEmissionVetoHook1);
   }
@@ -308,6 +348,11 @@ bool Pythia8Hadronizer::initializeForInternalPartons()
            fMasterGen->particleData.listAll();
   }
 
+  // init decayer
+  fDecayer->readString("ProcessLevel:all = off"); // trick
+  fDecayer->readString("ProcessLevel::resonanceDecays=on");
+  fDecayer->init();
+
   return true;
 }
 
@@ -317,13 +362,11 @@ bool Pythia8Hadronizer::initializeForExternalPartons()
 
   std::cout << "Initializing for external partons" << std::endl;
 
-  // pythiaEvent = &pythia->event;
-    
   if(LHEInputFileName != string()) {
 
-    cout << endl;
-    cout << "LHE Input File Name = " << LHEInputFileName << endl;
-    cout << endl;
+    std::cout << std::endl;
+    std::cout << "LHE Input File Name = " << LHEInputFileName << std::endl;
+    std::cout << std::endl;
     fMasterGen->init(LHEInputFileName);
 
   } else {
@@ -376,22 +419,13 @@ bool Pythia8Hadronizer::initializeForExternalPartons()
            fMasterGen->particleData.listAll();
   }
 
+  // init decayer
+  fDecayer->readString("ProcessLevel:all = off"); // trick
+  fDecayer->readString("ProcessLevel::resonanceDecays=on");
+  fDecayer->init();
+
   return true;
 }
-
-#if 0
-// naive Pythia8 HepMC status fixup
-static int getStatus(const HepMC::GenParticle *p)
-{
-  int status = p->status();
-  if (status > 0)
-    return status;
-  else if (status > -30 && status < 0)
-    return 3;
-  else
-    return 2;
-}
-#endif
 
 
 void Pythia8Hadronizer::statistics()
@@ -417,6 +451,9 @@ bool Pythia8Hadronizer::generatePartonsAndHadronize()
 
 bool Pythia8Hadronizer::hadronize()
 {
+  DJR.resize(0);
+  nME = -1;
+  nMEFiltered = -1;
   if(LHEInputFileName == string()) lhaUP->loadEvent(lheEvent());
 
   if ( fJetMatchingHook ) 
@@ -427,19 +464,119 @@ bool Pythia8Hadronizer::hadronize()
 
   bool py8next = fMasterGen->next();
 
-  if (!py8next)
+  double mergeweight = fMasterGen.get()->info.mergingWeight();
+  
+  //protect against 0-weight from ckkw or similar
+  if (!py8next || mergeweight<=0.)
   {
     lheEvent()->count( lhef::LHERunInfo::kSelected );
     event().reset();
     return false;
   }
-
+  
+  if (fJetMatchingPy8InternalHook) {
+    const std::vector<double> djrmatch = fJetMatchingPy8InternalHook->GetDJR();
+    //cap size of djr vector to save storage space (keep only up to first 6 elements)
+    unsigned int ndjr = std::min(djrmatch.size(), std::vector<double>::size_type(6));
+    for (unsigned int idjr=0; idjr<ndjr; ++idjr) {
+      DJR.push_back(djrmatch[idjr]);
+    }
+    
+    nME=fJetMatchingPy8InternalHook->nMEPartons()[0];
+    nMEFiltered=fJetMatchingPy8InternalHook->nMEPartons()[1];
+  }
+  
   // update LHE matching statistics
   //
   lheEvent()->count( lhef::LHERunInfo::kAccepted );
 
   event().reset(new HepMC::GenEvent);
-  return toHepMC.fill_next_event( *(fMasterGen.get()), event().get());
+  bool py8hepmc =  toHepMC.fill_next_event( *(fMasterGen.get()), event().get());
+  if (!py8hepmc) {
+    return false;
+  }
+  
+  //add ckkw merging weight
+  if (mergeweight!=1.) {
+    event()->weights().push_back(mergeweight);
+  }
+  
+  return true;
+  
+  
+}
+
+
+bool Pythia8Hadronizer::residualDecay()
+{
+
+  Event* pythiaEvent = &(fMasterGen->event);
+
+  int NPartsBeforeDecays = pythiaEvent->size();
+  int NPartsAfterDecays = event().get()->particles_size();
+  int NewBarcode = NPartsAfterDecays;
+
+  for ( int ipart=NPartsAfterDecays; ipart>NPartsBeforeDecays; ipart-- )
+  {
+
+    HepMC::GenParticle* part = event().get()->barcode_to_particle( ipart );
+
+    if ( part->status() == 1 )
+    {
+      fDecayer->event.reset();
+      Particle py8part(  part->pdg_id(), 93, 0, 0, 0, 0, 0, 0,
+                         part->momentum().x(),
+                         part->momentum().y(),
+                         part->momentum().z(),
+                         part->momentum().t(),
+                         part->generated_mass() );
+      HepMC::GenVertex* ProdVtx = part->production_vertex();
+      py8part.vProd( ProdVtx->position().x(), ProdVtx->position().y(),
+                     ProdVtx->position().z(), ProdVtx->position().t() );
+      py8part.tau( (fDecayer->particleData).tau0( part->pdg_id() ) );
+      fDecayer->event.append( py8part );
+      int nentries = fDecayer->event.size();
+      if ( !fDecayer->event[nentries-1].mayDecay() ) continue;
+      fDecayer->next();
+      int nentries1 = fDecayer->event.size();
+      if ( nentries1 <= nentries ) continue; //same number of particles, no decays...
+
+      part->set_status(2);
+
+      Particle& py8daughter = fDecayer->event[nentries]; // the 1st daughter
+      HepMC::GenVertex* DecVtx = new HepMC::GenVertex( HepMC::FourVector(py8daughter.xProd(),
+                                                       py8daughter.yProd(),
+                                                       py8daughter.zProd(),
+                                                       py8daughter.tProd()) );
+
+      DecVtx->add_particle_in( part ); // this will cleanup end_vertex if exists, replace with the new one
+                                       // I presume (vtx) barcode will be given automatically
+
+      HepMC::FourVector pmom( py8daughter.px(), py8daughter.py(), py8daughter.pz(), py8daughter.e() );
+
+      HepMC::GenParticle* daughter =
+                        new HepMC::GenParticle( pmom, py8daughter.id(), 1 );
+
+      NewBarcode++;
+      daughter->suggest_barcode( NewBarcode );
+      DecVtx->add_particle_out( daughter );
+
+      for ( int ipart1=nentries+1; ipart1<nentries1; ipart1++ )
+      {
+        py8daughter = fDecayer->event[ipart1];
+        HepMC::FourVector pmomN( py8daughter.px(), py8daughter.py(), py8daughter.pz(), py8daughter.e() );
+        HepMC::GenParticle* daughterN =
+                        new HepMC::GenParticle( pmomN, py8daughter.id(), 1 );
+        NewBarcode++;
+        daughterN->suggest_barcode( NewBarcode );
+        DecVtx->add_particle_out( daughterN );
+      }
+
+      event().get()->add_vertex( DecVtx );
+
+    }
+ }
+ return true;
 
 }
 
@@ -458,6 +595,10 @@ void Pythia8Hadronizer::finalizeEvent()
   if (!lhe) {
     eventInfo()->setBinningValues(std::vector<double>(1, fMasterGen->info.pTHat()));
   }
+  
+  eventInfo()->setDJR(DJR);
+  eventInfo()->setNMEPartons(nME);
+  eventInfo()->setNMEPartonsFiltered(nMEFiltered);
 
   //******** Verbosity ********
 

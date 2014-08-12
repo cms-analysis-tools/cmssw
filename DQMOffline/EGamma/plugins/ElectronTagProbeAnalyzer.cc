@@ -439,7 +439,7 @@ void ElectronTagProbeAnalyzer::analyze( const edm::Event& iEvent, const edm::Eve
         h1_classes->Fill(eleClass);
 
         // pflow
-        h1_mva->Fill(bestGsfElectron.mva()) ;
+        h1_mva->Fill(bestGsfElectron.mva_e_pi()) ;
         if (bestGsfElectron.ecalDrivenSeed()) h1_provenance->Fill(1.) ;
         if (bestGsfElectron.trackerDrivenSeed()) h1_provenance->Fill(-1.) ;
         if (bestGsfElectron.trackerDrivenSeed()||bestGsfElectron.ecalDrivenSeed()) h1_provenance->Fill(0.);
@@ -515,81 +515,6 @@ void ElectronTagProbeAnalyzer::fillMatchedHistos
 //  //if (electron.classification() == GsfElectron::BIGBREM) h_matchedEle_eta_bbrem->Fill(std::abs(electron.eta()));
 //  //if (electron.classification() == GsfElectron::OLDNARROW) h_matchedEle_eta_narrow->Fill(std::abs(electron.eta()));
  }
-
-//bool ElectronTagProbeAnalyzer::trigger( const edm::Event & e )
-// {
-//  // retreive TriggerResults from the event
-//  edm::Handle<edm::TriggerResults> triggerResults ;
-//  e.getByLabel(triggerResults_,triggerResults) ;
-//
-//  bool accept = false ;
-//
-//  if (triggerResults.isValid())
-//   {
-//    //std::cout << "TriggerResults found, number of HLT paths: " << triggerResults->size() << std::endl;
-//    // get trigger names
-//    const edm::TriggerNames & triggerNames = e.triggerNames(*triggerResults);
-////    if (nEvents_==1)
-////     {
-////      for (unsigned int i=0; i<triggerNames_.size(); i++)
-////       { std::cout << "trigger path= " << triggerNames_.triggerName(i) << std::endl; }
-////     }
-//
-//    unsigned int n = HLTPathsByName_.size() ;
-//    for (unsigned int i=0; i!=n; i++)
-//     {
-//      HLTPathsByIndex_[i]=triggerNames_.triggerIndex(HLTPathsByName_[i]) ;
-//     }
-//
-//    // empty input vectors (n==0) means any trigger paths
-//    if (n==0)
-//     {
-//      n=triggerResults->size() ;
-//      HLTPathsByName_.resize(n) ;
-//      HLTPathsByIndex_.resize(n) ;
-//      for ( unsigned int i=0 ; i!=n ; i++)
-//       {
-//        HLTPathsByName_[i]=triggerNames_.triggerName(i) ;
-//        HLTPathsByIndex_[i]=i ;
-//       }
-//     }
-//
-////    if (nEvents_==1)
-////     {
-////      if (n>0)
-////       {
-////        std::cout << "HLT trigger paths requested: index, name and valididty:" << std::endl;
-////        for (unsigned int i=0; i!=n; i++)
-////         {
-////          bool validity = HLTPathsByIndex_[i]<triggerResults->size();
-////          std::cout
-////            << " " << HLTPathsByIndex_[i]
-////            << " " << HLTPathsByName_[i]
-////            << " " << validity << std::endl;
-////         }
-////       }
-////     }
-//
-//    // count number of requested HLT paths which have fired
-//    unsigned int fired=0 ;
-//    for ( unsigned int i=0 ; i!=n ; i++ )
-//     {
-//      if (HLTPathsByIndex_[i]<triggerResults->size())
-//       {
-//        if (triggerResults->accept(HLTPathsByIndex_[i]))
-//         {
-//          fired++ ;
-//          h1_triggers->Fill(float(HLTPathsByIndex_[i]));
-//          //std::cout << "Fired HLT path= " << HLTPathsByName_[i] << std::endl ;
-//          accept = true ;
-//         }
-//       }
-//     }
-//
-//   }
-//
-//  return accept ;
-// }
 
 bool ElectronTagProbeAnalyzer::selected( const reco::GsfElectronCollection::const_iterator & gsfIter , double vertexTIP )
  {

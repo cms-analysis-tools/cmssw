@@ -74,6 +74,9 @@ void TrackRefitter::produce(edm::Event& theEvent, const edm::EventSetup& setup)
     {
       edm::Handle<reco::TrackCollection> theTCollection;
       getFromEvt(theEvent,theTCollection,bs);
+
+      LogDebug("TrackRefitter") << "TrackRefitter::produce(none):Number of Trajectories:" << (*theTCollection).size();
+
       if (theTCollection.failedToGet()){
 	edm::LogError("TrackRefitter")<<"could not get the reco::TrackCollection."; break;}
       LogDebug("TrackRefitter") << "run the algorithm" << "\n";
@@ -140,7 +143,7 @@ void TrackRefitter::produce(edm::Event& theEvent, const edm::EventSetup& setup)
 
   
   //put everything in th event
-  putInEvt(theEvent, thePropagator.product(), theMeasTk.product(), outputRHColl, outputTColl, outputTEColl, outputTrajectoryColl, algoResults);
+  putInEvt(theEvent, thePropagator.product(), theMeasTk.product(), outputRHColl, outputTColl, outputTEColl, outputTrajectoryColl, algoResults,theBuilder.product());
   LogDebug("TrackRefitter") << "end" << "\n";
 }
 

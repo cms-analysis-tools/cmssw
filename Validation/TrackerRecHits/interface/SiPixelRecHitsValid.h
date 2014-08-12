@@ -12,6 +12,7 @@
 #include "FWCore/Framework/interface/Frameworkfwd.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
 #include "FWCore/Framework/interface/EDAnalyzer.h"
+#include "DQMServices/Core/interface/DQMEDAnalyzer.h"
 
 #include <string>
 
@@ -23,7 +24,7 @@ class PixelGeomDetUnit;
 class SiPixelRecHit;
 class TrackerTopology;
 
-class SiPixelRecHitsValid : public edm::EDAnalyzer {
+class SiPixelRecHitsValid : public DQMEDAnalyzer {
 
    public:
 	//Constructor
@@ -36,16 +37,13 @@ class SiPixelRecHitsValid : public edm::EDAnalyzer {
 
 	virtual void analyze(const edm::Event& e, const edm::EventSetup& c);
 	void beginJob();
-        void beginRun( const edm::Run& r, const edm::EventSetup& c );
-	void endJob();
+	void bookHistograms(DQMStore::IBooker & ibooker,const edm::Run& run, const edm::EventSetup& es);
 
    private:
 	void fillBarrel(const SiPixelRecHit &,const PSimHit &, DetId, const PixelGeomDetUnit *,	
 			 const TrackerTopology *tTopo);
 	void fillForward(const SiPixelRecHit &, const PSimHit &, DetId, const PixelGeomDetUnit *,
 			 const TrackerTopology *tTopo);
-
-	std::string outputFile_;
 
 	//Clusters BPIX
 	MonitorElement* clustYSizeModule[8];
@@ -107,8 +105,6 @@ class SiPixelRecHitsValid : public edm::EDAnalyzer {
 	MonitorElement* recHitXPullDisk2Plaquettes[7];
 	MonitorElement* recHitYPullDisk1Plaquettes[7];
 	MonitorElement* recHitYPullDisk2Plaquettes[7];
-
-        DQMStore* dbe_;
 
         edm::ParameterSet conf_;
         edm::EDGetTokenT<SiPixelRecHitCollection> siPixelRecHitCollectionToken_;

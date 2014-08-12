@@ -19,22 +19,22 @@ TopDiLeptonDQM::TopDiLeptonDQM( const edm::ParameterSet& ps ) {
   moduleName_      = ps.getUntrackedParameter<string>("moduleName");
   fileOutput_      = ps.getParameter<bool>("fileOutput");
   outputFile_      = ps.getUntrackedParameter<string>("outputFile");
-  triggerResults_  = ps.getParameter<edm::InputTag>("TriggerResults");
+  triggerResults_  = consumes<TriggerResults>(ps.getParameter<edm::InputTag>("TriggerResults"));
   hltPaths_        = ps.getParameter<vector<string> >("hltPaths");
   hltPaths_sig_    = ps.getParameter<vector<string> >("hltPaths_sig");
   hltPaths_trig_   = ps.getParameter<vector<string> >("hltPaths_trig");
 
-  vertex_          = ps.getParameter<edm::InputTag>("vertexCollection");
+  vertex_          = consumes<reco::VertexCollection>(ps.getParameter<edm::InputTag>("vertexCollection"));
   vertex_X_cut_    = ps.getParameter<double>("vertex_X_cut");
   vertex_Y_cut_    = ps.getParameter<double>("vertex_Y_cut");
   vertex_Z_cut_    = ps.getParameter<double>("vertex_Z_cut");
 
-  muons_           = ps.getParameter<edm::InputTag>("muonCollection");
+  muons_           = consumes<reco::MuonCollection>(ps.getParameter<edm::InputTag>("muonCollection"));
   muon_pT_cut_     = ps.getParameter<double>("muon_pT_cut");
   muon_eta_cut_    = ps.getParameter<double>("muon_eta_cut");
   muon_iso_cut_    = ps.getParameter<double>("muon_iso_cut");
 
-  elecs_           = ps.getParameter<edm::InputTag>("elecCollection");
+  elecs_           = consumes<reco::GsfElectronCollection>(ps.getParameter<edm::InputTag>("elecCollection"));
   elec_pT_cut_     = ps.getParameter<double>("elec_pT_cut");
   elec_eta_cut_    = ps.getParameter<double>("elec_eta_cut");
   elec_iso_cut_    = ps.getParameter<double>("elec_iso_cut");
@@ -228,15 +228,8 @@ void TopDiLeptonDQM::analyze(const edm::Event& evt, const edm::EventSetup& conte
   // ------------------------
 
   edm::Handle<reco::VertexCollection> vertexs;
-  evt.getByLabel(vertex_, vertexs);
-
-  if( vertexs.failedToGet() ) {
-
-    //    cout << endl << "----------------------------" << endl;
-    //    cout << "--- NO PRIMARY VERTEX !! ---" << endl;
-    //    cout << "----------------------------" << endl << endl;
-
-  }
+  evt.getByToken(vertex_, vertexs);
+  
 
   if( !vertexs.failedToGet() ) {
 
@@ -263,15 +256,8 @@ void TopDiLeptonDQM::analyze(const edm::Event& evt, const edm::EventSetup& conte
   // -------------------------
 
   edm::Handle<TriggerResults> trigResults;
-  evt.getByLabel(triggerResults_, trigResults);
+  evt.getByToken(triggerResults_, trigResults);
 
-  if( trigResults.failedToGet() ) {
-
-    //    cout << endl << "-----------------------------" << endl;
-    //    cout << "--- NO TRIGGER RESULTS !! ---" << endl;
-    //    cout << "-----------------------------" << endl << endl;
-
-  }
 
   if( !trigResults.failedToGet() ) {
 
@@ -321,17 +307,10 @@ void TopDiLeptonDQM::analyze(const edm::Event& evt, const edm::EventSetup& conte
   // ------------------------
 
   edm::Handle<reco::MuonCollection> muons;
-  evt.getByLabel(muons_, muons);
+  evt.getByToken(muons_, muons);
 
   reco::MuonCollection::const_iterator muon;
 
-  if( muons.failedToGet() ) {
-
-    //    cout << endl << "------------------------" << endl;
-    //    cout << "--- NO RECO MUONS !! ---" << endl;
-    //    cout << "------------------------" << endl << endl;
-
-  }
 
   if( !muons.failedToGet() ) {
 
@@ -400,17 +379,11 @@ void TopDiLeptonDQM::analyze(const edm::Event& evt, const edm::EventSetup& conte
   // ----------------------------
 
   edm::Handle<reco::GsfElectronCollection> elecs;
-  evt.getByLabel(elecs_, elecs);
+  evt.getByToken(elecs_, elecs);
+
 
   reco::GsfElectronCollection::const_iterator elec;
 
-  if( elecs.failedToGet() ) {
-
-    //    cout << endl << "----------------------------" << endl;
-    //    cout << "--- NO RECO ELECTRONS !! ---" << endl;
-    //    cout << "----------------------------" << endl << endl;
-
-  }
 
   if( !elecs.failedToGet() ) {
 
@@ -467,13 +440,11 @@ void TopDiLeptonDQM::analyze(const edm::Event& evt, const edm::EventSetup& conte
 
   }
 
-  //  N_iso_lep = N_iso_el + N_iso_mu; // UNUSED
 
   // --------------------
   //  TWO Isolated MUONS
   // --------------------
 
-  //  if( N_iso_mu > 1 && Fired_Control_Trigger[0] ) {
   if( N_iso_mu > 1 ) {
 
     // Vertex cut
@@ -597,7 +568,6 @@ void TopDiLeptonDQM::analyze(const edm::Event& evt, const edm::EventSetup& conte
   //  TWO Isolated LEPTONS (mu/e)
   // -----------------------------
 
-  //  if( N_iso_el > 0 && N_iso_mu > 0 && Fired_Control_Trigger[0] ) {
   if( N_iso_el > 0 && N_iso_mu > 0 ) {
 
     // Vertex cut
@@ -706,7 +676,6 @@ void TopDiLeptonDQM::analyze(const edm::Event& evt, const edm::EventSetup& conte
   //  TWO Isolated ELECTRONS
   // ------------------------
 
-  //  if( N_iso_el > 1 && Fired_Control_Trigger[0] ) {
   if( N_iso_el > 1 ) {
 
     // Vertex cut

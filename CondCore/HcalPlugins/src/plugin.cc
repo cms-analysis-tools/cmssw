@@ -10,8 +10,12 @@
 #include "CondFormats/HcalObjects/interface/AllObjects.h"
 #include "CondFormats/DataRecord/interface/HcalAllRcds.h"
 
+#include "CondFormats/DataRecord/interface/HcalOOTPileupCorrectionRcd.h"
+#include "CondFormats/HcalObjects/interface/OOTPileupCorrectionColl.h"
+
 //
 #include "CondCore/CondDB/interface/Serialization.h"
+
 
 // required for compiling ( the only available constructor in this class ). Can't be used in persistency without this...
 namespace cond {
@@ -48,3 +52,4 @@ REGISTER_PLUGIN(HcalLongRecoParamsRcd,HcalLongRecoParams);
 REGISTER_PLUGIN(HcalMCParamsRcd,HcalMCParams);
 REGISTER_PLUGIN(HcalFlagHFDigiTimeParamsRcd,HcalFlagHFDigiTimeParams);
 REGISTER_PLUGIN(HcalTimingParamsRcd,HcalTimingParams);
+REGISTER_PLUGIN(HcalOOTPileupCorrectionRcd,OOTPileupCorrectionColl);

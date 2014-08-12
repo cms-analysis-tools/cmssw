@@ -1,9 +1,7 @@
 #include "EffSourceHandler.h"
-#include "CondFormats/Calibration/interface/EfficiencyPayloads.h"
 #include "FWCore/MessageLogger/interface/MessageLogger.h"
 #include "FWCore/ParameterSet/interface/ParameterSetfwd.h"
 #include "FWCore/ParameterSet/interface/ParameterSet.h"
-
 
 //#include<iostream>
 #include<sstream>
@@ -12,6 +10,21 @@
 #include <sstream>
 #include <typeinfo>
 
+#include "CondCore/CondDB/interface/Serialization.h"
+
+namespace cond {
+  template <> boost::shared_ptr<condex::Efficiency> deserialize<condex::Efficiency>( const std::string& payloadType,
+                                                                                     const Binary& payloadData,
+                                                                                     const Binary& streamerInfoData,
+                                                                                     bool unpackingOnly ){
+    // DESERIALIZE_BASE_CASE( condex::Efficiency );  abstract
+    DESERIALIZE_POLIMORPHIC_CASE( condex::Efficiency, condex::ParametricEfficiencyInPt );
+    DESERIALIZE_POLIMORPHIC_CASE( condex::Efficiency, condex::ParametricEfficiencyInEta );
+
+    // here we come if none of the deserializations above match the payload type:
+    throwException(std::string("Type mismatch, target object is type \"")+payloadType+"\"", "deserialize<>" );
+  }
+}
 
 popcon::ExEffSource::ExEffSource(const edm::ParameterSet& pset) :
   m_name(pset.getUntrackedParameter<std::string>("name","ExEffSource")),

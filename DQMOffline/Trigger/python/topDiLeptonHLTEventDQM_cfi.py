@@ -11,13 +11,13 @@ topDiLeptonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ## sub-directory to write the monitor histograms to
     ## [mandatory] : should not be changed w/o explicit 
     ## communication to TopCom!
-    directory = cms.string("HLTriggerOffline/Top/DiLeptonic/"),
+    directory = cms.string("HLT/TopHLTOffline/Top/DiLeptonic/"),
 
     ## [mandatory]
     sources = cms.PSet(
       muons = cms.InputTag("muons"),
       elecs = cms.InputTag("gedGsfElectrons"),
-      jets  = cms.InputTag("PFJetsFilter"),
+      jets  = cms.InputTag("ak4PFJetsCHS"),
       mets  = cms.VInputTag("met", "tcMet", "pfMet")
     ),
     ## [optional] : when omitted all monitoring plots for electrons
@@ -47,7 +47,7 @@ topDiLeptonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     jetExtras = cms.PSet(
       ## when omitted monitor plots for pt will be filled from uncorrected
       ## jets    
-      jetCorrector = cms.string("ak5PFL2L3"),
+      #jetCorrector = cms.string("ak4PFCHSL2L3"),
       ## when omitted no extra selection will be applied on jets before
       ## filling the monitor histograms; if jetCorrector is present the
       ## selection will be applied to corrected jets
@@ -63,11 +63,13 @@ topDiLeptonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ## will be empty
     triggerExtras = cms.PSet(
         src = cms.InputTag("TriggerResults","","HLT"),
-        pathsELECMU = cms.vstring([ 'HLT_Mu17_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL',
-                                    'HLT_Mu8_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL']),
-        pathsDIMUON = cms.vstring([ 'HLT_Mu17_Mu8',
-                                    'HLT_Mu17_TkMu8']),
-        pathsDIELEC = cms.vstring([ 'HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL'])
+        pathsELECMU = cms.vstring([ 'HLT_Mu23_TrkIsoVVL_Ele12_Gsf_CaloId_TrackId_Iso_MediumWP_v',
+                                    'HLT_Mu8_TrkIsoVVL_Ele23_Gsf_CaloId_TrackId_Iso_MediumWP_v']),
+        pathsDIMUON = cms.vstring([ 'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_v',
+                                    'HLT_Mu17_Mu8_v']),
+        pathsDIELEC = cms.vstring([ 'HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_v',
+                                    'HLT_Ele23_Ele12_CaloId_TrackId_iso_v',
+                                    'HLT_Ele17_Ele8_Gsf_v'])
     )    
   ),
                                   
@@ -82,7 +84,7 @@ topDiLeptonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ## [optional] : when omitted no preselection is applied
     trigger = cms.PSet(
         src    = cms.InputTag("TriggerResults","","HLT"),
-        select = cms.vstring(['HLT_Mu17_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL','HLT_Mu8_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL','HLT_Mu17_Mu8','HLT_Mu17_TkMu8','HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL'])
+        select = cms.vstring(['HLT_Mu23_TrkIsoVVL_Ele12_Gsf_CaloId_TrackId_Iso_MediumWP_v','HLT_Mu8_TrkIsoVVL_Ele23_Gsf_CaloId_TrackId_Iso_MediumWP_v','HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_v','HLT_Mu17_Mu8_v','HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_v','HLT_Ele23_Ele12_CaloId_TrackId_iso_v','HLT_Ele17_Ele8_Gsf_v'])
     ),
     ## [optional] : when omitted no preselection is applied
     vertex = cms.PSet(
@@ -116,8 +118,8 @@ topDiLeptonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ),
     cms.PSet(
       label  = cms.string("jets/pf:step1"),
-      src    = cms.InputTag("PFJetsFilter"),
-      jetCorrector = cms.string("ak5PFL2L3"),
+      src    = cms.InputTag("ak4PFJetsCHS"),
+      #jetCorrector = cms.string("ak4PFCHSL2L3"),
       select = cms.string("pt>30. & abs(eta)<2.5"),
       min = cms.int32(2),
     )
@@ -137,13 +139,13 @@ DiMuonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ## sub-directory to write the monitor histograms to
     ## [mandatory] : should not be changed w/o explicit 
     ## communication to TopCom!
-    directory = cms.string("HLTriggerOffline/Top/DiMuon/"),
+    directory = cms.string("HLT/TopHLTOffline/Top/DiMuon/"),
 
     ## [mandatory]
     sources = cms.PSet(
       muons = cms.InputTag("muons"),
       elecs = cms.InputTag("gedGsfElectrons"),
-      jets  = cms.InputTag("PFJetsFilter"),
+      jets  = cms.InputTag("ak4PFJetsCHS"),
       mets  = cms.VInputTag("met", "tcMet", "pfMet")
     ),
     ## [optional] : when omitted all monitoring plots for electrons
@@ -173,7 +175,7 @@ DiMuonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     jetExtras = cms.PSet(
       ## when omitted monitor plots for pt will be filled from uncorrected
       ## jets    
-      jetCorrector = cms.string("ak5PFL2L3"),
+      #jetCorrector = cms.string("ak4PFCHSL2L3"),
       ## when omitted no extra selection will be applied on jets before
       ## filling the monitor histograms; if jetCorrector is present the
       ## selection will be applied to corrected jets
@@ -189,11 +191,13 @@ DiMuonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ## will be empty
     triggerExtras = cms.PSet(
         src = cms.InputTag("TriggerResults","","HLT"),
-        pathsELECMU = cms.vstring([ 'HLT_Mu17_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL',
-                                    'HLT_Mu8_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL']),
-        pathsDIMUON = cms.vstring([ 'HLT_Mu17_Mu8',
-                                    'HLT_Mu17_TkMu8']),
-        pathsDIELEC = cms.vstring([ 'HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL'])
+        pathsELECMU = cms.vstring([ 'HLT_Mu23_TrkIsoVVL_Ele12_Gsf_CaloId_TrackId_Iso_MediumWP_v',
+                                    'HLT_Mu8_TrkIsoVVL_Ele23_Gsf_CaloId_TrackId_Iso_MediumWP_v']),
+        pathsDIMUON = cms.vstring([ 'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_v',
+                                    'HLT_Mu17_Mu8_v']),
+        pathsDIELEC = cms.vstring([ 'HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_v',
+                                    'HLT_Ele23_Ele12_CaloId_TrackId_iso_v',
+                                    'HLT_Ele17_Ele8_Gsf_v'])
     )    
   ),
                                   
@@ -208,8 +212,7 @@ DiMuonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ## [optional] : when omitted no preselection is applied
     trigger = cms.PSet(
         src    = cms.InputTag("TriggerResults","","HLT"),
-    #    select = cms.vstring(['HLT_Mu9','HLT_Ele15_SW_L1R','HLT_DoubleMu3'])
-        select = cms.vstring([ 'HLT_Mu17_Mu8','HLT_Mu17_TkMu8']),
+        select = cms.vstring(['HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_v','HLT_Mu17_Mu8_v']),
     ),
     ## [optional] : when omitted no preselection is applied
     vertex = cms.PSet(
@@ -251,8 +254,8 @@ DiMuonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ),
     cms.PSet(
       label  = cms.string("jets/pf:step2"),
-      src    = cms.InputTag("PFJetsFilter"),
-      jetCorrector = cms.string("ak5PFL2L3"),
+      src    = cms.InputTag("ak4PFJetsCHS"),
+      #jetCorrector = cms.string("ak4PFCHSL2L3"),
       select = cms.string("pt>30. & abs(eta)<2.5"),
       min = cms.int32(2),
     ),
@@ -270,13 +273,13 @@ DiElectronHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ## sub-directory to write the monitor histograms to
     ## [mandatory] : should not be changed w/o explicit 
     ## communication to TopCom!
-    directory = cms.string("HLTriggerOffline/Top/DiElectron/"),
+    directory = cms.string("HLT/TopHLTOffline/Top/DiElectron/"),
 
     ## [mandatory]
     sources = cms.PSet(
       muons = cms.InputTag("muons"),
       elecs = cms.InputTag("gedGsfElectrons"),
-      jets  = cms.InputTag("PFJetsFilter"),
+      jets  = cms.InputTag("ak4PFJetsCHS"),
       mets  = cms.VInputTag("met", "tcMet", "pfMet")
     ),
     ## [optional] : when omitted all monitoring plots for electrons
@@ -306,7 +309,7 @@ DiElectronHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     jetExtras = cms.PSet(
       ## when omitted monitor plots for pt will be filled from uncorrected
       ## jets    
-      jetCorrector = cms.string("ak5PFL2L3"),
+      #jetCorrector = cms.string("ak4PFCHSL2L3"),
       ## when omitted no extra selection will be applied on jets before
       ## filling the monitor histograms; if jetCorrector is present the
       ## selection will be applied to corrected jets
@@ -322,11 +325,13 @@ DiElectronHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ## will be empty
     triggerExtras = cms.PSet(
         src = cms.InputTag("TriggerResults","","HLT"),
-        pathsELECMU = cms.vstring([ 'HLT_Mu17_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL',
-                                    'HLT_Mu8_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL']),
-        pathsDIMUON = cms.vstring([ 'HLT_Mu17_Mu8',
-                                    'HLT_Mu17_TkMu8']),
-        pathsDIELEC = cms.vstring([ 'HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL'])
+        pathsELECMU = cms.vstring([ 'HLT_Mu23_TrkIsoVVL_Ele12_Gsf_CaloId_TrackId_Iso_MediumWP_v',
+                                    'HLT_Mu8_TrkIsoVVL_Ele23_Gsf_CaloId_TrackId_Iso_MediumWP_v']),
+        pathsDIMUON = cms.vstring([ 'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_v',
+                                    'HLT_Mu17_Mu8_v']),
+        pathsDIELEC = cms.vstring([ 'HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_v',
+                                    'HLT_Ele23_Ele12_CaloId_TrackId_iso_v',
+                                    'HLT_Ele17_Ele8_Gsf_v'])
     )    
   ),
                                   
@@ -341,8 +346,7 @@ DiElectronHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ## [optional] : when omitted no preselection is applied
     trigger = cms.PSet(
         src    = cms.InputTag("TriggerResults","","HLT"),
-    #    select = cms.vstring(['HLT_Mu9','HLT_Ele15_SW_L1R','HLT_DoubleMu3'])
-        select = cms.vstring([ 'HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL'])
+        select = cms.vstring(['HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_v','HLT_Ele23_Ele12_CaloId_TrackId_iso_v','HLT_Ele17_Ele8_Gsf_v'])
     ),
     ## [optional] : when omitted no preselection is applied
     vertex = cms.PSet(
@@ -385,8 +389,8 @@ DiElectronHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ),
     cms.PSet(
       label  = cms.string("jets/pf:step2"),
-      src    = cms.InputTag("PFJetsFilter"),
-      jetCorrector = cms.string("ak5PFL2L3"),
+      src    = cms.InputTag("ak4PFJetsCHS"),
+      #jetCorrector = cms.string("ak4PFCHSL2L3"),
       select = cms.string("pt>30. & abs(eta)<2.5"),
       min = cms.int32(2),
     ),
@@ -404,13 +408,13 @@ ElecMuonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ## sub-directory to write the monitor histograms to
     ## [mandatory] : should not be changed w/o explicit 
     ## communication to TopCom!
-    directory = cms.string("HLTriggerOffline/Top/ElecMuon/"),
+    directory = cms.string("HLT/TopHLTOffline/Top/ElecMuon/"),
 
     ## [mandatory]
     sources = cms.PSet(
       muons = cms.InputTag("muons"),
       elecs = cms.InputTag("gedGsfElectrons"),
-      jets  = cms.InputTag("PFJetsFilter"),
+      jets  = cms.InputTag("ak4PFJetsCHS"),
       mets  = cms.VInputTag("met", "tcMet", "pfMet")
     ),
     ## [optional] : when omitted all monitoring plots for electrons
@@ -440,7 +444,7 @@ ElecMuonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     jetExtras = cms.PSet(
       ## when omitted monitor plots for pt will be filled from uncorrected
       ## jets    
-      jetCorrector = cms.string("ak5PFL2L3"),
+      #jetCorrector = cms.string("ak4PFCHSL2L3"),
       ## when omitted no extra selection will be applied on jets before
       ## filling the monitor histograms; if jetCorrector is present the
       ## selection will be applied to corrected jets
@@ -456,11 +460,13 @@ ElecMuonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ## will be empty
     triggerExtras = cms.PSet(
         src = cms.InputTag("TriggerResults","","HLT"),
-        pathsELECMU = cms.vstring([ 'HLT_Mu17_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL',
-                                    'HLT_Mu8_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL']),
-        pathsDIMUON = cms.vstring([ 'HLT_Mu17_Mu8',
-                                    'HLT_Mu17_TkMu8']),
-        pathsDIELEC = cms.vstring([ 'HLT_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL'])
+        pathsELECMU = cms.vstring([ 'HLT_Mu23_TrkIsoVVL_Ele12_Gsf_CaloId_TrackId_Iso_MediumWP_v',
+                                    'HLT_Mu8_TrkIsoVVL_Ele23_Gsf_CaloId_TrackId_Iso_MediumWP_v']),
+        pathsDIMUON = cms.vstring([ 'HLT_Mu17_TrkIsoVVL_Mu8_TrkIsoVVL_v',
+                                    'HLT_Mu17_Mu8_v']),
+        pathsDIELEC = cms.vstring([ 'HLT_DoubleEle33_CaloIdL_GsfTrkIdVL_v',
+                                    'HLT_Ele23_Ele12_CaloId_TrackId_iso_v',
+                                    'HLT_Ele17_Ele8_Gsf_v'])
     )    
   ),
                                   
@@ -475,9 +481,7 @@ ElecMuonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ## [optional] : when omitted no preselection is applied
     trigger = cms.PSet(
         src    = cms.InputTag("TriggerResults","","HLT"),
-    #    select = cms.vstring(['HLT_Mu9','HLT_Ele15_SW_L1R','HLT_DoubleMu3'])
-        select = cms.vstring([ 'HLT_Mu17_Ele8_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL',
-                                    'HLT_Mu8_Ele17_CaloIdT_CaloIsoVL_TrkIdVL_TrkIsoVL']),
+        select = cms.vstring(['HLT_Mu23_TrkIsoVVL_Ele12_Gsf_CaloId_TrackId_Iso_MediumWP_v','HLT_Mu8_TrkIsoVVL_Ele23_Gsf_CaloId_TrackId_Iso_MediumWP_v'])
     ),
     ## [optional] : when omitted no preselection is applied
     vertex = cms.PSet(
@@ -527,8 +531,8 @@ ElecMuonHLTOfflineDQM = cms.EDAnalyzer("TopDiLeptonHLTOfflineDQM",
     ),
     cms.PSet(
       label  = cms.string("jets/pf:step3"),
-      src    = cms.InputTag("PFJetsFilter"),
-      jetCorrector = cms.string("ak5PFL2L3"),
+      src    = cms.InputTag("ak4PFJetsCHS"),
+      #jetCorrector = cms.string("ak4PFCHSL2L3"),
       select = cms.string("pt>30. & abs(eta)<2.5"),
       min = cms.int32(2),
     ),

@@ -27,7 +27,6 @@
 
 #include "CondFormats/SiPixelObjects/interface/SiPixelQuality.h"
 
-#include "EventFilter/SiPixelRawToDigi/interface/R2DTimerObserver.h"
 #include "EventFilter/SiPixelRawToDigi/interface/PixelUnpackingRegions.h"
 #include "FWCore/Framework/interface/ConsumesCollector.h"
 
@@ -39,15 +38,13 @@ using namespace std;
 // -----------------------------------------------------------------------------
 SiPixelRawToDigi::SiPixelRawToDigi( const edm::ParameterSet& conf ) 
   : config_(conf), 
-    cabling_(0), 
     badPixelInfo_(0),
     regions_(0),
-    hCPU(0), hDigi(0), theTimer(0)
+    hCPU(0), hDigi(0)
 {
 
   includeErrors = config_.getParameter<bool>("IncludeErrors");
   useQuality = config_.getParameter<bool>("UseQualityInfo");
-  useCablingTree_ = config_.getUntrackedParameter<bool>("UseCablingTree",true);
   if (config_.exists("ErrorList")) {
     tkerrorlist = config_.getParameter<std::vector<int> > ("ErrorList");
   }
@@ -79,7 +76,7 @@ SiPixelRawToDigi::SiPixelRawToDigi( const edm::ParameterSet& conf )
   // Timing
   bool timing = config_.getUntrackedParameter<bool>("Timing",false);
   if (timing) {
-    theTimer = new R2DTimerObserver("**** MY TIMING REPORT ***");
+    theTimer.reset( new edm::CPUTimer );
     hCPU = new TH1D ("hCPU","hCPU",100,0.,0.050);
     hDigi = new TH1D("hDigi","hDigi",50,0.,15000.);
   }
@@ -90,14 +87,12 @@ SiPixelRawToDigi::SiPixelRawToDigi( const edm::ParameterSet& conf )
 SiPixelRawToDigi::~SiPixelRawToDigi() {
   edm::LogInfo("SiPixelRawToDigi")  << " HERE ** SiPixelRawToDigi destructor!";
 
-  if (useCablingTree_) delete cabling_;
   if (regions_) delete regions_;
 
   if (theTimer) {
     TFile rootFile("analysis.root", "RECREATE", "my histograms");
     hCPU->Write();
     hDigi->Write();
-    delete theTimer;
   }
 
 }
@@ -116,20 +111,10 @@ void SiPixelRawToDigi::produce( edm::Event& ev,
 // initialize cabling map or update if necessary
   if (recordWatcher.check( es )) {
     // cabling map, which maps online address (fed->link->ROC->local pixel) to offline (DetId->global pixel)
-    if (useCablingTree_) {
-      delete cabling_;
-      // we are going to make our own copy so safe to let the map be deleted early
-      edm::ESTransientHandle<SiPixelFedCablingMap> cablingMap;
-      es.get<SiPixelFedCablingMapRcd>().get( cablingMap );
-      fedIds   = cablingMap->fedIds();
-      cabling_ = cablingMap->cablingTree();
-    } else {
-      // we are going to hold the pointer so we need the map to stick around
-      edm::ESHandle<SiPixelFedCablingMap> cablingMap;
-      es.get<SiPixelFedCablingMapRcd>().get( cablingMap );
-      fedIds   = cablingMap->fedIds();
-      cabling_ = cablingMap.product();
-    }
+    edm::ESTransientHandle<SiPixelFedCablingMap> cablingMap;
+    es.get<SiPixelFedCablingMapRcd>().get( cablingMap );
+    fedIds   = cablingMap->fedIds();
+    cabling_ = cablingMap->cablingTree();
     LogDebug("map version:")<< cabling_->version();
   }
 // initialize quality record or update if necessary
@@ -154,7 +139,7 @@ void SiPixelRawToDigi::produce( edm::Event& ev,
   std::auto_ptr< DetIdCollection > tkerror_detidcollection(new DetIdCollection());
   std::auto_ptr< DetIdCollection > usererror_detidcollection(new DetIdCollection());
 
-  PixelDataFormatter formatter(cabling_);
+  PixelDataFormatter formatter(cabling_.get());
   formatter.setErrorStatus(includeErrors);
 
   if (useQuality) formatter.setQualityStatus(useQuality, badPixelInfo_);
@@ -232,12 +217,12 @@ void SiPixelRawToDigi::produce( edm::Event& ev,
 
   if (theTimer) {
     theTimer->stop();
-    LogDebug("SiPixelRawToDigi") << "TIMING IS: (real)" << theTimer->lastMeasurement().real() ;
+    LogDebug("SiPixelRawToDigi") << "TIMING IS: (real)" << theTimer->realTime() ;
     ndigis += formatter.nDigis();
     nwords += formatter.nWords();
     LogDebug("SiPixelRawToDigi") << " (Words/Digis) this ev: "
          <<formatter.nWords()<<"/"<<formatter.nDigis() << "--- all :"<<nwords<<"/"<<ndigis;
-    hCPU->Fill( theTimer->lastMeasurement().real() ); 
+    hCPU->Fill( theTimer->realTime() ); 
     hDigi->Fill(formatter.nDigis());
   }
 

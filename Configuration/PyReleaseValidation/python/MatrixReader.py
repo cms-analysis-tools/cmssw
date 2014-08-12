@@ -20,6 +20,7 @@ class MatrixReader(object):
         self.reset(opt.what)
 
         self.wm=opt.wmcontrol
+        self.revertDqmio=opt.revertDqmio
         self.addCommand=opt.command
         self.apply=opt.apply
         self.commandLineWf=opt.workflow
@@ -45,7 +46,9 @@ class MatrixReader(object):
                              'relval_production': 'prod-'  ,
                              'relval_ged': 'ged-',
                              'relval_upgrade':'upg-',
-                             'relval_identity':'id-'
+                             'relval_identity':'id-',
+                             'relval_machine': 'mach-',
+                             'relval_unsch': 'unsch-'
                              }
 
         self.files = ['relval_standard' ,
@@ -55,7 +58,9 @@ class MatrixReader(object):
                       'relval_production',
                       'relval_ged',
                       'relval_upgrade',
-                      'relval_identity'                      
+                      'relval_identity',
+                      'relval_machine',
+                      'relval_unsch'
                       ]
 
         self.relvalModule = None
@@ -244,9 +249,9 @@ class MatrixReader(object):
                             if stepIndex in self.apply or stepName in self.apply:
                                 cmd +=' '+self.addCommand
                         else:
-                            cmd +=' '+self.addCommand
-                    if self.wm:
-                        cmd=cmd.replace('DQMROOT','DQM')
+                          cmd +=' '+self.addCommand
+                    if self.wm and self.revertDqmio=='yes':
+                        cmd=cmd.replace('DQMIO','DQM')
                         cmd=cmd.replace('--filetype DQM','')
                 commands.append(cmd)
                 ranStepList.append(stepName)
@@ -335,7 +340,8 @@ class MatrixReader(object):
                     line += ' @@@'
                 else:
                     line += ' @@@ '+commands[0]
-                line=line.replace('DQMROOT','DQM')
+                if self.revertDqmio=='yes':
+                    line=line.replace('DQMIO','DQM')
                 writtenWF+=1
                 outFile.write(line+'\n')
 
@@ -348,7 +354,8 @@ class MatrixReader(object):
                     stepIndex=index+1
                     if 'dasquery.log' in cmd: continue
                     line = 'STEP%d ++ '%(stepIndex,) +stepName + ' @@@ '+cmd
-                    line=line.replace('DQMROOT','DQM')
+                    if self.revertDqmio=='yes':
+                        line=line.replace('DQMIO','DQM')
                     outFile.write(line+'\n')
                 outFile.write('\n'+'\n')
             outFile.close()

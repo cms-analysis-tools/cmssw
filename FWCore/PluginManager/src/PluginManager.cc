@@ -11,13 +11,15 @@
 //
 
 // system include files
-#include <boost/bind.hpp>
-#include <boost/mem_fn.hpp>
-
 #include <boost/filesystem/operations.hpp>
 
 #include <fstream>
+#include <functional>
 #include <set>
+
+// TEMPORARY
+#include "TInterpreter.h"
+#include "TVirtualMutex.h"
 
 // user include files
 #include "FWCore/PluginManager/interface/PluginManager.h"
@@ -43,10 +45,11 @@ namespace edmplugin {
 PluginManager::PluginManager(const PluginManager::Config& iConfig) :
   searchPath_( iConfig.searchPath() )
 {
+    using std::placeholders::_1;
     const boost::filesystem::path kCacheFile(standard::cachefileName());
     //NOTE: This may not be needed :/
     PluginFactoryManager* pfm = PluginFactoryManager::get();
-    pfm->newFactory_.connect(boost::bind(boost::mem_fn(&PluginManager::newFactory),this,_1));
+    pfm->newFactory_.connect(std::bind(std::mem_fn(&PluginManager::newFactory),this,_1));
 
     // When building a single big executable the plugins are already registered in the 
     // PluginFactoryManager, we therefore only need to populate the categoryToInfos_ map
@@ -160,7 +163,7 @@ PluginManager::loadableFor_(const std::string& iCategory,
       "' because the category '"<<iCategory<<"' has no known plugins";
     } else {
       ioThrowIfFailElseSucceedStatus = false;
-      static boost::filesystem::path s_path;
+      static const boost::filesystem::path s_path;
       return s_path;
     }
   }
@@ -179,7 +182,7 @@ PluginManager::loadableFor_(const std::string& iCategory,
       <<"' in category '"<<iCategory<<"'. Please check spelling of name.";
     } else {
       ioThrowIfFailElseSucceedStatus = false;
-      static boost::filesystem::path s_path;
+      static const boost::filesystem::path s_path;
       return s_path;
     }
   }
@@ -241,7 +244,13 @@ PluginManager::load(const std::string& iCategory,
       goingToLoad_(p);
       Sentry s(loadingLibraryNamed_(), p.string());
       //boost::filesystem::path native(p.string());
-      boost::shared_ptr<SharedLibrary> ptr( new SharedLibrary(p) );
+      std::shared_ptr<SharedLibrary> ptr;
+      {
+	//TEMPORARY: to avoid possible deadlocks from ROOT, we must
+	// take the lock ourselves
+	R__LOCKGUARD2(gCINTMutex);
+	ptr.reset( new SharedLibrary(p) );
+      }
       loadables_[p]=ptr;
       justLoaded_(*ptr);
       return *ptr;
@@ -275,7 +284,13 @@ PluginManager::tryToLoad(const std::string& iCategory,
       goingToLoad_(p);
       Sentry s(loadingLibraryNamed_(), p.string());
       //boost::filesystem::path native(p.string());
-      boost::shared_ptr<SharedLibrary> ptr( new SharedLibrary(p) );
+      std::shared_ptr<SharedLibrary> ptr;
+      {
+	//TEMPORARY: to avoid possible deadlocks from ROOT, we must
+	// take the lock ourselves
+	R__LOCKGUARD(gCINTMutex);
+	ptr.reset( new SharedLibrary(p) );
+      }
       loadables_[p]=ptr;
       justLoaded_(*ptr);
       return ptr.get();
@@ -326,13 +341,13 @@ PluginManager::loadingLibraryNamed_()
 {
   //NOTE: pluginLoadMutex() indirectly guards this since this value
   // is only accessible via the Sentry call which us guarded by the mutex
-  static std::string s_name(staticallyLinkedLoadingFileName());
+  [[cms::thread_safe]] static std::string s_name(staticallyLinkedLoadingFileName());
   return s_name;
 }
 
 PluginManager*& PluginManager::singleton()
 {
-  static PluginManager* s_singleton=0;
+  [[cms::thread_safe]] static PluginManager* s_singleton=0;
   return s_singleton;
 }
 

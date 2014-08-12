@@ -47,6 +47,12 @@ using namespace std;
 
 namespace {
 
+  class StrictWeakOrdering{
+    public:
+     bool operator() ( uint32_t p,const uint32_t& i) const {return p < i;}
+  };
+
+
   struct CmpTKD {
     bool operator()(MeasurementDet const* rh, MeasurementDet const * lh) {
       return rh->fastGeomDet().geographicalId().rawId() < lh->fastGeomDet().geographicalId().rawId();
@@ -80,12 +86,11 @@ MeasurementTrackerImpl::MeasurementTrackerImpl(const edm::ParameterSet&         
                                        const SiPixelQuality *pixelQuality,
                                        const SiPixelFedCabling *pixelCabling,
                                        int   pixelQualityFlags,
-                                       int   pixelQualityDebugFlags,
-				       bool isRegional) :
+                                       int   pixelQualityDebugFlags) :
   MeasurementTracker(trackerGeom,geometricSearchTracker),
   pset_(conf),
   name_(conf.getParameter<std::string>("ComponentName")),
-  theStDetConditions(hitMatcher,stripCPE,isRegional),
+  theStDetConditions(hitMatcher,stripCPE),
   thePxDetConditions(pixelCPE)
 {
   this->initialize();

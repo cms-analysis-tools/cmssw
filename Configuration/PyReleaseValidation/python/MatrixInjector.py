@@ -88,9 +88,8 @@ class MatrixInjector(object):
             "ProcessingVersion": self.version,                #Processing Version (used for all tasks in chain)
             "GlobalTag": None,                                #Global Tag (overridden per task)
             "CouchURL": self.couch,                           #URL of CouchDB containing Config Cache
-            "ConfigCacheURL": self.couch,                           #URL of CouchDB containing Config Cache
-            "DbsUrl": "http://cmsdbsprod.cern.ch/cms_dbs_prod_global/servlet/DBSServlet",
-            #"CouchDBName": self.couchDB,                      #Name of Couch Database containing config cache
+            "ConfigCacheURL": self.couch,                     #URL of CouchDB containing Config Cache
+            "DbsUrl": "https://cmsweb.cern.ch/dbs/prod/global/DBSReader",
             #- Will contain all configs for all Tasks
             #"SiteWhitelist" : ["T2_CH_CERN", "T1_US_FNAL"],   #Site whitelist
             "TaskChain" : None,                                  #Define number of tasks in chain.
@@ -219,6 +218,8 @@ class MatrixInjector(object):
                                     chainDict['nowmTasklist'][-1]['EventsPerJob'] = ns[1]
                                 if 'FASTSIM' in s[2][index] or '--fast' in s[2][index]:
                                     thisLabel+='_FastSim'
+                                if 'lhe' in s[2][index] in s[2][index]:
+                                    chainDict['nowmTasklist'][-1]['LheInputFiles'] =True
 
                             elif nextHasDSInput:
                                 chainDict['nowmTasklist'].append(copy.deepcopy(self.defaultInput))
@@ -267,12 +268,17 @@ class MatrixInjector(object):
                             chainDict['GlobalTag']=chainDict['nowmTasklist'][-1]['nowmIO']['GT'] #set in general to the last one of the chain
                             if 'pileup' in chainDict['nowmTasklist'][-1]['nowmIO']:
                                 chainDict['nowmTasklist'][-1]['MCPileup']=chainDict['nowmTasklist'][-1]['nowmIO']['pileup']
-                            if '--pileup' in s[2][index]:
-                                processStrPrefix='PU_'
-                                if   (  s[2][index].split()[  s[2][index].split().index('--pileup')+1 ]  ).find('50ns')  > 0 :
-                                    processStrPrefix='PU50ns_'
-                                elif (  s[2][index].split()[  s[2][index].split().index('--pileup')+1 ]  ).find('25ns')  > 0 :
+                            if '--pileup ' in s[2][index]:      # catch --pileup (scenarion) and not --pileup_ (dataset to be mixed) => works also making PRE-MIXed dataset
+                                processStrPrefix='PU_'          # take care of pu overlay done with GEN-SIM mixing
+                                if (  s[2][index].split()[  s[2][index].split().index('--pileup')+1 ]  ).find('25ns')  > 0 :
                                     processStrPrefix='PU25ns_'
+                                elif   (  s[2][index].split()[  s[2][index].split().index('--pileup')+1 ]  ).find('50ns')  > 0 :
+                                    processStrPrefix='PU50ns_'
+                            if 'DIGIPREMIX_S2' in s[2][index] : # take care of pu overlay done with DIGI mixing of premixed events
+                                if s[2][index].split()[ s[2][index].split().index('--pileup_input')+1  ].find('25ns')  > 0 :
+                                    processStrPrefix='PUpmx25ns_'
+                                elif s[2][index].split()[ s[2][index].split().index('--pileup_input')+1  ].find('50ns')  > 0 :
+                                    processStrPrefix='PUpmx50ns_'
 
                             if acqEra:
                                 #chainDict['AcquisitionEra'][step]=(chainDict['CMSSWVersion']+'-PU_'+chainDict['nowmTasklist'][-1]['GlobalTag']).replace('::All','')+thisLabel

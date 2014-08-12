@@ -31,10 +31,15 @@
 #include "posix_getrusage.h"
 #include "mach_clock_get_time.h"
 #include "mach_absolute_time.h"
+#include "mach_thread_info.h"
 #include "x86_tsc_clock.h"
 #include "boost_timer.h"
 #include "tbb_tick_count.h"
+
+#ifndef __clang__
+// CLANG does not support OpenMP
 #include "omp_get_wtime.h"
+#endif // ! __clang__
 
 #include "benchmark.h"
 
@@ -42,7 +47,7 @@
 void init_timers(std::vector<BenchmarkBase *> & timers) 
 {
   // std::chrono timers
-#if GCC_VERSION >= 40700
+#if __clang__ || GCC_VERSION >= 40700
   // C++11 clock name
   timers.push_back(new Benchmark<std::chrono::steady_clock>("std::chrono::steady_clock"));
 #else
@@ -116,6 +121,10 @@ void init_timers(std::vector<BenchmarkBase *> & timers)
     timers.push_back(new Benchmark<mach_absolute_time_clock_native>("mach_absolute_time() (native)"));
   }
 #endif // HAVE_MACH_ABSOLUTE_TIME
+#ifdef HAVE_MACH_THREAD_INFO_CLOCK
+  if (mach_thread_info_clock::is_available)
+    timers.push_back(new Benchmark<mach_thread_info_clock>("thread_info(mach_thread_self(), THREAD_BASIC_INFO, ...)"));
+#endif // HAVE_MACH_THREAD_INFO_CLOCK
 
 #if defined __x86_64__ or defined __i386__
 // TSC is only available on x86
@@ -153,8 +162,10 @@ void init_timers(std::vector<BenchmarkBase *> & timers)
   // TBB tick_count (this interface does not expose the underlying type, so it cannot easily be used to build a "native" clock interface)
   timers.push_back(new Benchmark<clock_tbb_tick_count>("tbb::tick_count"));
 
+#ifndef __clang__
   // OpenMP timer
   timers.push_back(new Benchmark<clock_omp_get_wtime>("omp_get_wtime"));
+#endif // ! __clang__
 }
 
 
