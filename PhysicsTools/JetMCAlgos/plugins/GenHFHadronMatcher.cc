@@ -96,7 +96,7 @@ private:
                               std::vector<int> &lastQuarkIndices, std::vector<int> &hadronFlavour, std::set<int> &checkedHadronIds, const int lastQuarkIndex);
 
 // ----------member data ---------------------------
-    edm::InputTag genJets_;
+    const edm::EDGetTokenT<reco::GenJetCollection> genJets_;
     int flavour_;
     bool noBBbarResonances_;
     bool onlyJetClusteredHadrons_;
@@ -143,15 +143,12 @@ private:
 * For mesons this means an inversion with respect to the PDG definition, as mesons actually contain anti-b-quarks and anti-mesons contain b-quarks.
 *
 */
-GenHFHadronMatcher::GenHFHadronMatcher ( const edm::ParameterSet& cfg )
+GenHFHadronMatcher::GenHFHadronMatcher ( const edm::ParameterSet& cfg ) :
+    genJets_ (consumes<reco::GenJetCollection>(cfg.getParameter<edm::InputTag> ( "genJets" ))),
+    flavour_ (std::abs(cfg.getParameter<int> ( "flavour" ))),	// Make flavour independent of sign given in configuration
+    noBBbarResonances_ (cfg.getParameter<bool> ( "noBBbarResonances" )),
+    onlyJetClusteredHadrons_ (cfg.getParameter<bool> ( "onlyJetClusteredHadrons" ))
 {
-
-    genJets_           = cfg.getParameter<edm::InputTag> ( "genJets" );
-    flavour_           = cfg.getParameter<int> ( "flavour" );
-    noBBbarResonances_ = cfg.getParameter<bool> ( "noBBbarResonances" );
-    onlyJetClusteredHadrons_ = cfg.getParameter<bool> ( "onlyJetClusteredHadrons" );
-    
-    flavour_ = abs ( flavour_ ); // Make flavour independent of sign given in configuration
     if ( flavour_==5 ) {
         flavourStr_="B";
     } else if ( flavour_==4 ) {
@@ -219,10 +216,10 @@ void GenHFHadronMatcher::produce ( edm::Event& evt, const edm::EventSetup& setup
     using namespace edm;
 
     edm::Handle<reco::GenJetCollection> genJets;
-    evt.getByLabel ( genJets_, genJets );
+    evt.getByToken ( genJets_, genJets );
 
 
-    // Defining adron matching variables
+    // Defining hadron matching variables
     std::auto_ptr<std::vector<reco::GenParticle> > hadMothers ( new std::vector<reco::GenParticle> );
     std::auto_ptr<std::vector<std::vector<int> > > hadMothersIndices ( new std::vector<std::vector<int> > );
     std::auto_ptr<std::vector<int> > hadIndex ( new std::vector<int> );
